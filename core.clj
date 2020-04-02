@@ -1,6 +1,6 @@
 (ns intseq2.core)
 
-;; Clojure code for minimalist stack-based floating-point genetic programming
+;; Code for finding formulas for unknown integer sequences (Numbers 2).
 ;; Lee Spector (lspector@amherst.edu) 20200219
 
 ;; The top-level call function, gp, takes:
