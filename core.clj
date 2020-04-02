@@ -1,4 +1,4 @@
-(ns puf.core)
+(ns intseq2.core)
 
 ;; Clojure code for minimalist stack-based floating-point genetic programming
 ;; Lee Spector (lspector@amherst.edu) 20200219
@@ -151,4 +151,4 @@
   (for [x (range -2.0 2.0 0.1)]
     [x (+ (* x x) x 1)]))
 
-#_(gp 200 100 simple-regression-data)
+(gp 200 100 simple-regression-data)
