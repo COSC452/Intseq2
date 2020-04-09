@@ -19,7 +19,7 @@
 ;; - Supported instructions pop needed values from the stack and push results on the stack
 ;; - If there aren't sufficient arguments for an instruction, then it does nothing
 
-(def ingredients '(+ - * / sin cos x 0.0 1.0))
+;;(def ingredients '(+ - * / sin cos n 0.0 1.0))
 
 (defn error [genome test-pairs]
   "Returns the error of genome in the context of test-pairs."
@@ -60,7 +60,11 @@
                                    stack
                                    (cons (Math/cos (first stack))
                                          (rest stack)))
-                             x (cons input stack)
+                             ! (if (< (count stack) 1)
+                                 stack
+                                 (cons (factorial (first stack))
+                                       (rest stack)))
+                             n (cons input stack)
                              (cons (first program) stack)))))))))
 
 ;; In the following test the program multiplies x by 5.0. For the input 2.0 this will produce
@@ -71,11 +75,37 @@
 #_(error '[5.0 x *]
          '((2.0 10.0) (3.0 16.0) (-0.5 -3.0)))
 
-(defn new-individual [test-pairs]
-  "Returns a new, random individual in the context of test-pairs."
-  (let [genome (vec (repeatedly 5 #(rand-nth ingredients)))]
-    {:genome genome
-     :error  (error genome test-pairs)}))
+;;added by lee
+(defn factorial [n]
+  (loop [current n
+         next (dec current)
+         total 1]
+    (if (> current 1)
+      (recur next (dec next) (* total current))
+      total)))
+
+;;added by lee
+;;creates a random formula, we can change ingredients later
+(defn new-formula [max-depth]
+  (vec (repeatedly max-depth #(if (< (rand) 0.5)
+                                (first '(n)) (rand-nth '( + * / - < > sin cos !))))))
+;;added by lee
+;;creates individual with formula and error key
+;;have to adjust how we measure error later
+;;I think we are going to discuss as a group later of how long we want to start off our formulas, rn it is 5
+;;later the '(3 2) will be replaced with '(what n equals and the integer that coincides with n in the sequence)
+;; rn n=3 and 2 is the answer aka the number in the sequence
+(defn new-individual []
+  (let [form (new-formula 5)]
+    {:formula form
+     :error  (error form '((3 2)))}))
+
+;;previous new-individual
+;;(defn new-individual [test-pairs]
+  ;;"Returns a new, random individual in the context of test-pairs."
+  ;;(let [genome (vec (repeatedly 5 #(rand-nth ingredients)))]
+    ;;{:genome genome
+     ;;:error  (error genome test-pairs)}))
 
 (defn best [individuals]
   "Returns the best of the given individuals."
