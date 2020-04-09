@@ -21,9 +21,16 @@
 ;; - Supported instructions pop needed values from the stack and push results on the stack
 ;; - If there aren't sufficient arguments for an instruction, then it does nothing
 
-;;(def ingredients '(+ - * / sin cos n 0.0 1.0))
-
+(def ingredients '(+ - * / sin cos x 0.0 1.0))
 ;;expt mod sqrt gcd lcm tan
+
+(def testseq
+  (let [seq [1,2,3,4,5]
+      ind (range (count seq))]
+  (map #(vec [%1 %2]) ind seq)))
+
+
+
 
 (defn error [genome test-pairs]
   "Returns the error of genome in the context of test-pairs."
@@ -36,7 +43,7 @@
                   (if (empty? program)
                     (if (empty? stack)
                       1000000.0
-                      (Math/abs (- output (first stack))))
+                      (Math/abs (- output (first stack)))) ;; Math/abs only takes in floating points, which causes the "No matching method abs found taking 1 args"
                     (recur (rest program)
                            (case (first program)
                              + (if (< (count stack) 2)
@@ -131,17 +138,17 @@
 ;;creates a random formula, we can change ingredients later
 (defn new-formula [max-depth]
   (vec (repeatedly max-depth #(if (< (rand) 0.5)
-                                (first '(n)) (rand-nth '( + * / - < > sin cos !))))))
+                                (first '(x)) (rand-nth '( + * / - sin cos))))))
 ;;added by lee
 ;;creates individual with formula and error key
 ;;have to adjust how we measure error later
 ;;I think we are going to discuss as a group later of how long we want to start off our formulas, rn it is 5
 ;;later the '(3 2) will be replaced with '(what n equals and the integer that coincides with n in the sequence)
 ;; rn n=3 and 2 is the answer aka the number in the sequence
-(defn new-individual []
+(defn new-individual [test-pairs]
   (let [form (new-formula 5)]
-    {:formula form
-     :error  (error form '((3 2)))}))
+    {:genome form
+     :error  (error form test-pairs)}))
 
 ;;previous new-individual
 ;;(defn new-individual [test-pairs]
@@ -224,4 +231,4 @@
   (for [x (range -2.0 2.0 0.1)]
     [x (+ (* x x) x 1)]))
 
-#_(gp 200 100 simple-regression-data)
+#_(gp 200 100 testseq)
