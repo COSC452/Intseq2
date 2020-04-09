@@ -1,4 +1,6 @@
-(ns intseq2.core)
+(ns intseq2.core
+  (:require [clojure.math.combinatorics :as com])
+  (:require [clojure.math.numeric-tower :as maths]))
 
 ;; Code for finding formulas for unknown integer sequences (Numbers 2).
 ;; Lee Spector (lspector@amherst.edu) 20200219
@@ -20,6 +22,8 @@
 ;; - If there aren't sufficient arguments for an instruction, then it does nothing
 
 (def ingredients '(+ - * / sin cos x 0.0 1.0))
+
+;;expt mod sqrt gcd lcm tan
 
 (defn error [genome test-pairs]
   "Returns the error of genome in the context of test-pairs."
@@ -60,7 +64,46 @@
                                    stack
                                    (cons (Math/cos (first stack))
                                          (rest stack)))
+                             tan (if (< (count stack) 1)
+                                   stack
+                                   (cons (Math/tan (first stack))
+                                         (rest stack)))
+                             log (if (< (count stack) 1)
+                                   stack
+                                   (cons (Math/log (first stack))
+                                         (rest stack)))
                              x (cons input stack)
+                             #_(
+                                 expt (if (< (count stack) 2)
+                                        stack
+                                        (cons (long (maths/expt (first stack) (second stack)))
+                                              (rest (rest stack))))
+                                      mod (if (or (< (count stack) 2) (zero? (second stack)))
+                                            stack
+                                            (cons (long (mod (first stack) (second stack)))
+                                                  (rest (rest stack))))
+                                      sqrt (if (< (count stack) 1)
+                                             stack
+                                             (cons (long (maths/sqrt (first stack)))
+                                                   (rest stack)))
+                                      gcd (if (< (count stack) 2)
+                                            stack
+                                            (cons (maths/gcd (second stack) (first stack))
+                                                  (rest (rest stack))))
+                                      lcm (if (< (count stack) 2)
+                                            stack
+                                            (cons (maths/gcd (second stack) (first stack))
+                                                  (rest (rest stack))))
+                                      per (if (< (count stack) 1)
+                                            stack
+                                            (cons (com/count-permutations (range (first stack)))
+                                                  (rest stack)))
+                                      comb (if (< (count stack) 2)
+                                             stack
+                                             (cons (com/count-combinations (range (first stack)) (second stack))
+                                                   (rest stack)))
+
+                                      )
                              (cons (first program) stack)))))))))
 
 ;; In the following test the program multiplies x by 5.0. For the input 2.0 this will produce
@@ -151,4 +194,4 @@
   (for [x (range -2.0 2.0 0.1)]
     [x (+ (* x x) x 1)]))
 
-(gp 200 100 simple-regression-data)
+#_(gp 200 100 simple-regression-data)
