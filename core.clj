@@ -21,7 +21,7 @@
 ;; - Supported instructions pop needed values from the stack and push results on the stack
 ;; - If there aren't sufficient arguments for an instruction, then it does nothing
 
-(def ingredients '(+ - * / sin cos x 0.0 1.0 !))
+(def ingredients '(+ - * / sin cos x 0.0 1.0))
 ;;expt mod sqrt gcd lcm tan
 
 ;;added by lee
@@ -44,7 +44,7 @@
                   (if (empty? program)
                     (if (empty? stack)
                       1000000.0
-                      (Math/abs (float (- output (first stack))))) ;; Math/abs only takes in floating points, which causes the "No matching method abs found taking 1 args"
+                      (Math/abs (double (- output (first stack))))) ;; Math/abs only takes in floating points, which causes the "No matching method abs found taking 1 args"
                     (recur (rest program)
                            (case (first program)
                              + (if (< (count stack) 2)
