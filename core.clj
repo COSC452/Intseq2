@@ -21,16 +21,17 @@
 ;; - Supported instructions pop needed values from the stack and push results on the stack
 ;; - If there aren't sufficient arguments for an instruction, then it does nothing
 
-(def ingredients '(+ - * / sin cos x 0.0 1.0))
+(def ingredients '(+ - * / sin cos x 0.0 1.0 !))
 ;;expt mod sqrt gcd lcm tan
 
-(def testseq
-  (let [seq [1,2,3,4,5]
-      ind (range (count seq))]
-  (map #(vec [%1 %2]) ind seq)))
-
-
-
+;;added by lee
+(defn factorial [n]
+  (loop [current (biginteger n)
+         next (dec current)
+         total 1]
+    (if (> current 1)
+      (recur next (dec next) (* total current))
+      total)))
 
 (defn error [genome test-pairs]
   "Returns the error of genome in the context of test-pairs."
@@ -43,7 +44,7 @@
                   (if (empty? program)
                     (if (empty? stack)
                       1000000.0
-                      (Math/abs (- output (first stack)))) ;; Math/abs only takes in floating points, which causes the "No matching method abs found taking 1 args"
+                      (Math/abs (float (- output (first stack))))) ;; Math/abs only takes in floating points, which causes the "No matching method abs found taking 1 args"
                     (recur (rest program)
                            (case (first program)
                              + (if (< (count stack) 2)
@@ -125,14 +126,6 @@
 #_(error '[5.0 x *]
          '((2.0 10.0) (3.0 16.0) (-0.5 -3.0)))
 
-;;added by lee
-(defn factorial [n]
-  (loop [current n
-         next (dec current)
-         total 1]
-    (if (> current 1)
-      (recur next (dec next) (* total current))
-      total)))
 
 ;;added by lee
 ;;creates a random formula, we can change ingredients later
@@ -225,10 +218,20 @@
                          #(make-child population test-pairs))
              (inc generation)))))
 
-;; A simple test, symbolic regression of x^2 + x + 1
+(def testseq
+  (let [seq [1,2,3,4,5]
+        ind (range (count seq))]
+    (map #(vec [%1 %2]) ind seq)))
 
+;; A simple test, symbolic regression of x^2 + x + 1
 (def simple-regression-data
   (for [x (range -2.0 2.0 0.1)]
     [x (+ (* x x) x 1)]))
+
+(def polynomial2
+  (for [x (range -10.0 10.0 1.0)]
+    [x (+ (* x x) x 1)]))
+
+#_(gp 200 100 simple-regression-data)
 
 #_(gp 200 100 testseq)
