@@ -203,7 +203,7 @@
                                       (count population)))
               :best-genome  (:genome current-best)})))
 
-(defn gp [population-size generations test-pairs]
+(defn gp [population-size generations test-pairs elitism]
   "Runs genetic programming to solve, or approximately solve, a floating-point
   symbolic regression problem in the context of the given population-size,
   number of generations to run, and test-pairs."
@@ -214,9 +214,14 @@
     (if (or (< (:error (best population)) 0.1)
             (>= generation generations))
       (best population)
-      (recur (repeatedly population-size
+      (if elitism
+        (recur (conj (repeatedly (dec population-size)
+                           #(make-child population test-pairs))
+                     (best population))
+               (inc generation))
+        (recur (repeatedly population-size
                          #(make-child population test-pairs))
-             (inc generation)))))
+             (inc generation))))))
 
 (def testseq
   (let [seq [1,2,3,4,5]
