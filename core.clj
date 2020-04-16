@@ -116,19 +116,15 @@
          '((2.0 10.0) (3.0 16.0) (-0.5 -3.0)))
 
 ;;added by lee
-(defn factorial [n]
-  (loop [current n
-         next (dec current)
-         total 1]
-    (if (> current 1)
-      (recur next (dec next) (* total current))
-      total)))
+;;HAVE TO FIGURE OUT HOW IT WILL HANDLE NEGATIVE NUMBERS ARE WE GOING TO ACCEPT
+;;FACTORIALS OF NEGATIVE NUMBERS?
+(defn fact [n] (reduce *' (range 1 (inc n))))
 
 ;;added by lee
 ;;creates a random formula, we can change ingredients later
 (defn new-formula [max-depth]
   (vec (repeatedly max-depth #(if (< (rand) 0.67)
-                                (first '(x)) (rand-nth '( + * / - sin cos ! tan ;;log expt mod sqrt gcd lcm per comb))))))
+                                (first '(x)) (rand-nth '( + * / - sin cos ! tan log expt mod sqrt gcd lcm per comb))))))
 ;;added by lee
 ;;creates individual with formula and error key
 ;;have to adjust how we measure error later
