@@ -21,7 +21,7 @@
 ;; - Supported instructions pop needed values from the stack and push results on the stack
 ;; - If there aren't sufficient arguments for an instruction, then it does nothing
 
-(def ingredients '(+ - * / sin cos x 0 1 2 mod sqrt lcm tan))
+(def ingredients '(+ - * / x 1 0))
 ;; removed pow due to overflow
 ;;old factorial
 ;;(defn factorial [n]
@@ -130,16 +130,13 @@
 #_(error '[5.0 x *]
          '((2.0 10.0) (3.0 16.0) (-0.5 -3.0)))
 
-;;added by lee
-;;HAVE TO FIGURE OUT HOW IT WILL HANDLE NEGATIVE NUMBERS ARE WE GOING TO ACCEPT
-;;FACTORIALS OF NEGATIVE NUMBERS?
 (defn factorial [n] (reduce *' (range 1 (inc n))))
 
 ;;added by lee
 ;;creates a random formula, we can change ingredients later
 (defn new-formula [max-depth]
   (vec (repeatedly max-depth #(if (< (rand) 0.67)
-                                (first '(x)) (rand-nth '( + * / - sin cos ! tan log expt mod sqrt gcd lcm per comb))))))
+                                (first '(x)) (rand-nth ingredients)))))
 ;;added by lee
 ;;creates individual with formula and error key
 ;;have to adjust how we measure error later
@@ -151,13 +148,6 @@
     {:genome form
      :error  (error form test-pairs)}))
 
-;;previous new-individual
-;;(defn new-individual [test-pairs]
-  ;;"Returns a new, random individual in the context of test-pairs."
-  ;;(let [genome (vec (repeatedly 5 #(rand-nth ingredients)))]
-    ;;{:genome genome
-     ;;:error  (error genome test-pairs)}))
-
 (defn best [individuals]
   "Returns the best of the given individuals."
   (reduce (fn [i1 i2]
@@ -168,7 +158,7 @@
 
 (defn select [population]
   "Returns an individual selected from population using a tournament."
-  (best (repeatedly 2 #(rand-nth population))))
+  (best (repeatedly 5 #(rand-nth population))))
 
 (defn mutate [genome]
   "Returns a possibly-mutated copy of genome."
@@ -246,6 +236,10 @@
   (for [x (range -100 100 1)]
     [x (+ 1 (+ x (- (pow x 3) (* x 2))))]))
 
+;; x^5 + x^2 + 1 
+(def polynomial3 
+  (for [x (range -20 20 1)] 
+                           [x (+ 6 (+ (* x x) (pow x 5)))]))
 #_(gp 200 100 simple-regression-data true)
 #_(gp 200 100 testseq true)
 #_(gp 200 100 polynomial2 true)
