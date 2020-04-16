@@ -237,6 +237,6 @@
   (for [x (range -10.0 10.0 1.0)]
     [x (+ (* x x) x 1)]))
 
-#_(gp 200 100 simple-regression-data)
+#_(gp 200 100 simple-regression-data true)
 
 #_(gp 200 100 testseq)
