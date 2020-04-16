@@ -32,6 +32,10 @@
       (recur next (dec next) (* total current))
       total)))
 
+;;returns x^y
+(defn pow [x y]
+  (reduce * (repeat y x)))
+
 (defn error [genome test-pairs]
   "Returns the error of genome in the context of test-pairs."
   (reduce + (for [pair test-pairs]
@@ -57,6 +61,10 @@
                              * (if (< (count stack) 2)
                                  stack
                                  (cons (* (second stack) (first stack))
+                                       (rest (rest stack))))
+                             pow (if (< (count stack) 2)
+                                 stack
+                                 (cons (pow (second stack) (first stack))
                                        (rest (rest stack))))
                              / (if (or (< (count stack) 2)
                                        (zero? (first stack)))
@@ -230,10 +238,13 @@
   (for [x (range -2.0 2.0 0.1)]
     [x (+ (* x x) x 1)]))
 
+;; x^3 - x^2 + x + 1
 (def polynomial2
   (for [x (range -10.0 10.0 1.0)]
-    [x (+ (* x x) x 1)]))
+    [x (+ 1 (+ x (- (pow x 3) (* x 2))))]))
 
 #_(gp 200 100 simple-regression-data true)
-
 #_(gp 200 100 testseq true)
+#_(gp 200 100 polynomial2)
+
+>>>>>>> 5e9e48ee70c2ce248ddd86a8ea68d4022afe2305
