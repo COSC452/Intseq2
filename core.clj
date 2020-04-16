@@ -21,8 +21,7 @@
 ;; - Supported instructions pop needed values from the stack and push results on the stack
 ;; - If there aren't sufficient arguments for an instruction, then it does nothing
 
-(def ingredients '(+ - * / sin cos x 0.0 1.0))
-;;expt mod sqrt gcd lcm tan
+(def ingredients '(+ - * / sin cos x 0.0 1.0 expt mod sqrt gcd lcm tan))
 
 ;;added by lee
 (defn factorial [n]
@@ -93,7 +92,7 @@
                                    (cons (Math/log (first stack))
                                          (rest stack)))
                              x (cons input stack)
-                             #_(
+
                                  expt (if (< (count stack) 2)
                                         stack
                                         (cons (long (maths/expt (first stack) (second stack)))
@@ -122,8 +121,6 @@
                                              stack
                                              (cons (com/count-combinations (range (first stack)) (second stack))
                                                    (rest stack)))
-
-                                      )
                              (cons (first program) stack)))))))))
 
 ;; In the following test the program multiplies x by 5.0. For the input 2.0 this will produce
@@ -211,7 +208,7 @@
                                       (count population)))
               :best-genome  (:genome current-best)})))
 
-(defn gp [population-size generations test-pairs]
+(defn gp [population-size generations test-pairs elitism]
   "Runs genetic programming to solve, or approximately solve, a floating-point
   symbolic regression problem in the context of the given population-size,
   number of generations to run, and test-pairs."
@@ -222,9 +219,14 @@
     (if (or (< (:error (best population)) 0.1)
             (>= generation generations))
       (best population)
-      (recur (repeatedly population-size
+      (if elitism
+        (recur (conj (repeatedly (dec population-size)
+                           #(make-child population test-pairs))
+                     (best population))
+               (inc generation))
+        (recur (repeatedly population-size
                          #(make-child population test-pairs))
-             (inc generation)))))
+             (inc generation))))))
 
 (def testseq
   (let [seq [1,2,3,4,5]
@@ -241,7 +243,7 @@
   (for [x (range -10.0 10.0 1.0)]
     [x (+ 1 (+ x (- (pow x 3) (* x 2))))]))
 
-#_(gp 200 100 simple-regression-data)
+#_(gp 200 100 simple-regression-data true)
 
 #_(gp 200 100 testseq)
 
