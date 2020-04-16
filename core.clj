@@ -23,14 +23,14 @@
 
 (def ingredients '(+ - * / sin cos x 0 1 2 mod sqrt lcm tan))
 ;; removed pow due to overflow
-;;added by lee
-(defn factorial [n]
-  (loop [current (biginteger n)
-         next (dec current)
-         total 1]
-    (if (> current 1)
-      (recur next (dec next) (* total current))
-      total)))
+;;old factorial
+;;(defn factorial [n]
+  ;;(loop [current (biginteger n)
+        ;; next (dec current)
+       ;;  total 1]
+  ;;  (if (> current 1)
+    ;;  (recur next (dec next) (* total current))
+      ;;total)))
 
 ;;returns x^y
 (defn pow [x y]
@@ -133,7 +133,7 @@
 ;;added by lee
 ;;HAVE TO FIGURE OUT HOW IT WILL HANDLE NEGATIVE NUMBERS ARE WE GOING TO ACCEPT
 ;;FACTORIALS OF NEGATIVE NUMBERS?
-(defn fact [n] (reduce *' (range 1 (inc n))))
+(defn factorial [n] (reduce *' (range 1 (inc n))))
 
 ;;added by lee
 ;;creates a random formula, we can change ingredients later
