@@ -77,7 +77,6 @@
                                    (cons (Math/log (first stack))
                                          (rest stack)))
                              x (cons input stack)
-                             #_(
                                  expt (if (< (count stack) 2)
                                         stack
                                         (cons (long (maths/expt (first stack) (second stack)))
@@ -106,8 +105,6 @@
                                              stack
                                              (cons (com/count-combinations (range (first stack)) (second stack))
                                                    (rest stack)))
-
-                                      )
                              (cons (first program) stack)))))))))
 
 ;; In the following test the program multiplies x by 5.0. For the input 2.0 this will produce
@@ -130,8 +127,8 @@
 ;;added by lee
 ;;creates a random formula, we can change ingredients later
 (defn new-formula [max-depth]
-  (vec (repeatedly max-depth #(if (< (rand) 0.5)
-                                (first '(n)) (rand-nth '( + * / - < > sin cos !))))))
+  (vec (repeatedly max-depth #(if (< (rand) 0.67)
+                                (first '(x)) (rand-nth '( + * / - sin cos ! tan ;;log expt mod sqrt gcd lcm per comb))))))
 ;;added by lee
 ;;creates individual with formula and error key
 ;;have to adjust how we measure error later
@@ -140,7 +137,7 @@
 ;; rn n=3 and 2 is the answer aka the number in the sequence
 (defn new-individual []
   (let [form (new-formula 5)]
-    {:formula form
+    {:genome form
      :error  (error form '((3 2)))}))
 
 ;;previous new-individual
