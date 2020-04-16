@@ -21,9 +21,20 @@
 ;; - Supported instructions pop needed values from the stack and push results on the stack
 ;; - If there aren't sufficient arguments for an instruction, then it does nothing
 
-;;(def ingredients '(+ - * / sin cos n 0.0 1.0))
+(def ingredients '(+ - * / sin cos x 0 1 2 mod sqrt lcm tan))
+;; removed pow due to overflow
+;;added by lee
+(defn factorial [n]
+  (loop [current (biginteger n)
+         next (dec current)
+         total 1]
+    (if (> current 1)
+      (recur next (dec next) (* total current))
+      total)))
 
-;;expt mod sqrt gcd lcm tan
+;;returns x^y
+(defn pow [x y]
+  (reduce * (repeat y x)))
 
 (defn error [genome test-pairs]
   "Returns the error of genome in the context of test-pairs."
@@ -32,11 +43,11 @@
                     output (second pair)]
                 (loop [program genome
                        stack ()]
-                  ;(println "Program:" program "Stack:" stack)
+                  ;;(println "Program:" program "Stack:" stack)
                   (if (empty? program)
                     (if (empty? stack)
                       1000000.0
-                      (Math/abs (- output (first stack))))
+                      (Math/abs (double (- output (first stack))))) ;; Math/abs only takes in floating points, which causes the "No matching method abs found taking 1 args"
                     (recur (rest program)
                            (case (first program)
                              + (if (< (count stack) 2)
@@ -51,18 +62,22 @@
                                  stack
                                  (cons (* (second stack) (first stack))
                                        (rest (rest stack))))
+                             pow (if (< (count stack) 2)
+                                 stack
+                                 (cons (pow (second stack) (first stack))
+                                       (rest (rest stack))))
                              / (if (or (< (count stack) 2)
                                        (zero? (first stack)))
                                  stack
-                                 (cons (/ (second stack) (first stack))
+                                 (cons (long (/ (second stack) (first stack)))
                                        (rest (rest stack))))
                              sin (if (< (count stack) 1)
                                    stack
-                                   (cons (Math/sin (first stack))
+                                   (cons (long (Math/sin (first stack)))
                                          (rest stack)))
                              cos (if (< (count stack) 1)
                                    stack
-                                   (cons (Math/cos (first stack))
+                                   (cons (long (Math/cos (first stack)))
                                          (rest stack)))
                              ! (if (< (count stack) 1)
                                  stack
@@ -70,11 +85,11 @@
                                        (rest stack)))
                              tan (if (< (count stack) 1)
                                    stack
-                                   (cons (Math/tan (first stack))
+                                   (cons (long (Math/tan (first stack)))
                                          (rest stack)))
                              log (if (< (count stack) 1)
                                    stack
-                                   (cons (Math/log (first stack))
+                                   (cons (long (Math/log (first stack)))
                                          (rest stack)))
                              x (cons input stack)
                                  expt (if (< (count stack) 2)
@@ -131,10 +146,10 @@
 ;;I think we are going to discuss as a group later of how long we want to start off our formulas, rn it is 5
 ;;later the '(3 2) will be replaced with '(what n equals and the integer that coincides with n in the sequence)
 ;; rn n=3 and 2 is the answer aka the number in the sequence
-(defn new-individual []
+(defn new-individual [test-pairs]
   (let [form (new-formula 5)]
     {:genome form
-     :error  (error form '((3 2)))}))
+     :error  (error form test-pairs)}))
 
 ;;previous new-individual
 ;;(defn new-individual [test-pairs]
@@ -196,7 +211,7 @@
                                       (count population)))
               :best-genome  (:genome current-best)})))
 
-(defn gp [population-size generations test-pairs]
+(defn gp [population-size generations test-pairs elitism]
   "Runs genetic programming to solve, or approximately solve, a floating-point
   symbolic regression problem in the context of the given population-size,
   number of generations to run, and test-pairs."
@@ -207,14 +222,30 @@
     (if (or (< (:error (best population)) 0.1)
             (>= generation generations))
       (best population)
-      (recur (repeatedly population-size
+      (if elitism
+        (recur (conj (repeatedly (dec population-size)
+                           #(make-child population test-pairs))
+                     (best population))
+               (inc generation))
+        (recur (repeatedly population-size
                          #(make-child population test-pairs))
-             (inc generation)))))
+             (inc generation))))))
+
+(def testseq
+  (let [seq [1,2,3,4,5]
+        ind (range (count seq))]
+    (map #(vec [%1 %2]) ind seq)))
 
 ;; A simple test, symbolic regression of x^2 + x + 1
-
 (def simple-regression-data
-  (for [x (range -2.0 2.0 0.1)]
+  (for [x (range -100 100 1)]
     [x (+ (* x x) x 1)]))
 
-#_(gp 200 100 simple-regression-data)
+;; x^3 - x^2 + x + 1
+(def polynomial2
+  (for [x (range -100 100 1)]
+    [x (+ 1 (+ x (- (pow x 3) (* x 2))))]))
+
+#_(gp 200 100 simple-regression-data true)
+#_(gp 200 100 testseq true)
+#_(gp 200 100 polynomial2 true)
