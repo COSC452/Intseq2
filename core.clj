@@ -21,8 +21,7 @@
 ;; - Supported instructions pop needed values from the stack and push results on the stack
 ;; - If there aren't sufficient arguments for an instruction, then it does nothing
 
-(def ingredients '(+ - * / sin cos x 0.0 1.0))
-;;expt mod sqrt gcd lcm tan
+(def ingredients '(+ - * / sin cos x 0.0 1.0 expt mod sqrt gcd lcm tan))
 
 ;;added by lee
 (defn factorial [n]
@@ -85,7 +84,7 @@
                                    (cons (Math/log (first stack))
                                          (rest stack)))
                              x (cons input stack)
-                             #_(
+
                                  expt (if (< (count stack) 2)
                                         stack
                                         (cons (long (maths/expt (first stack) (second stack)))
@@ -114,8 +113,6 @@
                                              stack
                                              (cons (com/count-combinations (range (first stack)) (second stack))
                                                    (rest stack)))
-
-                                      )
                              (cons (first program) stack)))))))))
 
 ;; In the following test the program multiplies x by 5.0. For the input 2.0 this will produce
