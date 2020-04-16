@@ -21,8 +21,8 @@
 ;; - Supported instructions pop needed values from the stack and push results on the stack
 ;; - If there aren't sufficient arguments for an instruction, then it does nothing
 
-(def ingredients '(+ - * / sin cos x 0 1 2 pow mod sqrt lcm tan))
-
+(def ingredients '(+ - * / sin cos x 0 1 2 mod sqrt lcm tan))
+;; removed pow due to overflow
 ;;added by lee
 (defn factorial [n]
   (loop [current (biginteger n)
@@ -230,14 +230,14 @@
 
 ;; A simple test, symbolic regression of x^2 + x + 1
 (def simple-regression-data
-  (for [x (range -2.0 2.0 0.1)]
+  (for [x (range -100 100 1)]
     [x (+ (* x x) x 1)]))
 
 ;; x^3 - x^2 + x + 1
 (def polynomial2
-  (for [x (range -10.0 10.0 1.0)]
+  (for [x (range -100 100 1)]
     [x (+ 1 (+ x (- (pow x 3) (* x 2))))]))
 
 #_(gp 200 100 simple-regression-data true)
 #_(gp 200 100 testseq true)
-#_(gp 200 100 polynomial2)
+#_(gp 200 100 polynomial2 true)
