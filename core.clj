@@ -21,7 +21,7 @@
 ;; - Supported instructions pop needed values from the stack and push results on the stack
 ;; - If there aren't sufficient arguments for an instruction, then it does nothing
 
-(def ingredients '(+ - * / sin cos x 0.0 1.0 expt mod sqrt gcd lcm tan))
+(def ingredients '(+ - * / sin cos x 0 1 2 expt mod sqrt lcm tan))
 
 ;;added by lee
 (defn factorial [n]
@@ -39,7 +39,7 @@
                     output (second pair)]
                 (loop [program genome
                        stack ()]
-                  ;(println "Program:" program "Stack:" stack)
+                  ;;(println "Program:" program "Stack:" stack)
                   (if (empty? program)
                     (if (empty? stack)
                       1000000.0
@@ -61,15 +61,15 @@
                              / (if (or (< (count stack) 2)
                                        (zero? (first stack)))
                                  stack
-                                 (cons (/ (second stack) (first stack))
+                                 (cons (long (/ (second stack) (first stack)))
                                        (rest (rest stack))))
                              sin (if (< (count stack) 1)
                                    stack
-                                   (cons (Math/sin (first stack))
+                                   (cons (long (Math/sin (first stack)))
                                          (rest stack)))
                              cos (if (< (count stack) 1)
                                    stack
-                                   (cons (Math/cos (first stack))
+                                   (cons (long (Math/cos (first stack)))
                                          (rest stack)))
                              ! (if (< (count stack) 1)
                                  stack
@@ -77,11 +77,11 @@
                                        (rest stack)))
                              tan (if (< (count stack) 1)
                                    stack
-                                   (cons (Math/tan (first stack))
+                                   (cons (long (Math/tan (first stack)))
                                          (rest stack)))
                              log (if (< (count stack) 1)
                                    stack
-                                   (cons (Math/log (first stack))
+                                   (cons (long (Math/log (first stack)))
                                          (rest stack)))
                              x (cons input stack)
 
@@ -236,4 +236,4 @@
 
 #_(gp 200 100 simple-regression-data true)
 
-#_(gp 200 100 testseq)
+#_(gp 200 100 testseq true)
