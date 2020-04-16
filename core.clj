@@ -21,7 +21,7 @@
 ;; - Supported instructions pop needed values from the stack and push results on the stack
 ;; - If there aren't sufficient arguments for an instruction, then it does nothing
 
-(def ingredients '(+ - * / sin cos x 0 1 2 expt mod sqrt lcm tan))
+(def ingredients '(+ - * / sin cos x 0 1 2 pow mod sqrt lcm tan))
 
 ;;added by lee
 (defn factorial [n]
@@ -92,11 +92,6 @@
                                    (cons (long (Math/log (first stack)))
                                          (rest stack)))
                              x (cons input stack)
-
-                                 expt (if (< (count stack) 2)
-                                        stack
-                                        (cons (long (maths/expt (first stack) (second stack)))
-                                              (rest (rest stack))))
                                       mod (if (or (< (count stack) 2) (zero? (second stack)))
                                             stack
                                             (cons (long (mod (first stack) (second stack)))
@@ -246,5 +241,3 @@
 #_(gp 200 100 simple-regression-data true)
 #_(gp 200 100 testseq true)
 #_(gp 200 100 polynomial2)
-
->>>>>>> 5e9e48ee70c2ce248ddd86a8ea68d4022afe2305
