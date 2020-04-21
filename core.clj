@@ -160,14 +160,14 @@
   "Returns an individual selected from population using a tournament."
   (best (repeatedly 5 #(rand-nth population))))
 
-(defn mutate [genome]
+(defn mutate [genome add-rate delete-rate]
   "Returns a possibly-mutated copy of genome."
   (let [with-additions (flatten (for [g genome]
-                                  (if (< (rand) 1/10)
+                                  (if (< (rand) add-rate)
                                     (shuffle (list g (rand-nth ingredients)))
                                     g)))
         with-deletions (flatten (for [g with-additions]
-                                  (if (< (rand) 1/11)
+                                  (if (< (rand) delete-rate)
                                     ()
                                     g)))]
     (vec with-deletions)))
@@ -179,11 +179,11 @@
     (vec (concat (take crossover-point genome1)
                  (drop crossover-point genome2)))))
 
-(defn make-child [population test-pairs]
+(defn make-child [population test-pairs add-rate delete-rate]
   "Returns a new, evaluated child, produced by mutating the result
   of crossing over parents that are selected from the given population."
   (let [new-genome (mutate (crossover (:genome (select population))
-                                      (:genome (select population))))]
+                                      (:genome (select population))) add-rate delete-rate)]
     {:genome new-genome
      :error  (error new-genome test-pairs)}))
 
@@ -201,7 +201,7 @@
                                       (count population)))
               :best-genome  (:genome current-best)})))
 
-(defn gp [population-size generations test-pairs elitism]
+(defn gp [population-size generations test-pairs elitism add-rate delete-rate]
   "Runs genetic programming to solve, or approximately solve, a floating-point
   symbolic regression problem in the context of the given population-size,
   number of generations to run, and test-pairs."
@@ -214,11 +214,11 @@
       (best population)
       (if elitism
         (recur (conj (repeatedly (dec population-size)
-                           #(make-child population test-pairs))
+                           #(make-child population test-pairs add-rate delete-rate))
                      (best population))
                (inc generation))
         (recur (repeatedly population-size
-                         #(make-child population test-pairs))
+                         #(make-child population test-pairs add-rate delete-rate))
              (inc generation))))))
 
 (def testseq
@@ -240,6 +240,6 @@
 (def polynomial3 
   (for [x (range -20 20 1)] 
                            [x (+ 6 (+ (* x x) (pow x 5)))]))
-#_(gp 200 100 simple-regression-data true)
-#_(gp 200 100 testseq true)
-#_(gp 200 100 polynomial2 true)
+#_(gp 200 100 simple-regression-data true 0.1 0.1)
+#_(gp 200 100 testseq true 0.1 0.1)
+#_(gp 200 200 polynomial3 true 0.1 0.1)
