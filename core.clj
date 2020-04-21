@@ -21,7 +21,7 @@
 ;; - Supported instructions pop needed values from the stack and push results on the stack
 ;; - If there aren't sufficient arguments for an instruction, then it does nothing
 
-(def ingredients '(+ - * / sin cos x 0 1 2 mod sqrt lcm tan))
+(def ingredients '(+ - * / x 0 1 2))
 ;; removed pow due to overflow
 ;;old factorial
 ;;(defn factorial [n]
@@ -92,31 +92,31 @@
                                    (cons (long (Math/log (first stack)))
                                          (rest stack)))
                              x (cons input stack)
-                                 expt (if (< (count stack) 2)
-                                        stack
-                                        (cons (long (maths/expt (first stack) (second stack)))
-                                              (rest (rest stack))))
-                                      mod (if (or (< (count stack) 2) (zero? (second stack)))
-                                            stack
-                                            (cons (long (mod (first stack) (second stack)))
+                             expt (if (< (count stack) 2)
+                                    stack
+                                    (cons (long (maths/expt (first stack) (second stack)))
+                                          (rest (rest stack))))
+                             mod (if (or (< (count stack) 2) (zero? (second stack)))
+                                   stack
+                                   (cons (long (mod (first stack) (second stack)))
                                                   (rest (rest stack))))
-                                      sqrt (if (< (count stack) 1)
-                                             stack
-                                             (cons (long (maths/sqrt (first stack)))
+                             sqrt (if (< (count stack) 1)
+                                    stack
+                                    (cons (long (maths/sqrt (first stack)))
                                                    (rest stack)))
-                                      gcd (if (< (count stack) 2)
+                             gcd (if (< (count stack) 2)
                                             stack
                                             (cons (maths/gcd (second stack) (first stack))
                                                   (rest (rest stack))))
-                                      lcm (if (< (count stack) 2)
+                             lcm (if (< (count stack) 2)
                                             stack
                                             (cons (maths/gcd (second stack) (first stack))
                                                   (rest (rest stack))))
-                                      per (if (< (count stack) 1)
+                             per (if (< (count stack) 1)
                                             stack
                                             (cons (com/count-permutations (range (first stack)))
                                                   (rest stack)))
-                                      comb (if (< (count stack) 2)
+                             comb (if (< (count stack) 2)
                                              stack
                                              (cons (com/count-combinations (range (first stack)) (second stack))
                                                    (rest stack)))
@@ -138,8 +138,8 @@
 ;;added by lee
 ;;creates a random formula, we can change ingredients later
 (defn new-formula [max-depth]
-  (vec (repeatedly max-depth #(if (< (rand) 0.67)
-                                (first '(x)) (rand-nth '( + * / - sin cos ! tan log expt mod sqrt gcd lcm per comb))))))
+  (vec (repeatedly max-depth #(if (< (rand) 0.6)
+                                (first '(x)) (rand-nth ingredients)))))
 ;;added by lee
 ;;creates individual with formula and error key
 ;;have to adjust how we measure error later
@@ -168,7 +168,7 @@
 
 (defn select [population]
   "Returns an individual selected from population using a tournament."
-  (best (repeatedly 2 #(rand-nth population))))
+  (best (repeatedly 5 #(rand-nth population))))
 
 (defn mutate [genome]
   "Returns a possibly-mutated copy of genome."
@@ -189,11 +189,29 @@
     (vec (concat (take crossover-point genome1)
                  (drop crossover-point genome2)))))
 
-(defn make-child [population test-pairs]
+;;UMAD + CROSSOVER + TOURNAMENT
+(defn make-child1 [population test-pairs]
   "Returns a new, evaluated child, produced by mutating the result
   of crossing over parents that are selected from the given population."
   (let [new-genome (mutate (crossover (:genome (select population))
                                       (:genome (select population))))]
+    {:genome new-genome
+     :error  (error new-genome test-pairs)}))
+
+;; CROSSOVER + TOURNAMENT
+(defn make-child2 [population test-pairs]
+  "Returns a new, evaluated child, produced by mutating the result
+  of crossing over parents that are selected from the given population."
+  (let [new-genome (crossover (:genome (select population))
+                                      (:genome (select population)))]
+    {:genome new-genome
+     :error  (error new-genome test-pairs)}))
+
+;;UMAD + TOURNAMENT
+(defn make-child3 [population test-pairs]
+  "Returns a new, evaluated child, produced by mutating the result
+  of parents that are selected from the given population."
+  (let [new-genome (mutate (:genome (select population)))]
     {:genome new-genome
      :error  (error new-genome test-pairs)}))
 
@@ -210,8 +228,12 @@
                                            (reduce +))
                                       (count population)))
               :best-genome  (:genome current-best)})))
-
-(defn gp [population-size generations test-pairs elitism]
+;;[n] represents different combination of selection and mutation methods
+;; n=1 uses UMAD, crossover, tournament
+;; n=2 uses crossover, tournament
+;; n=3 uses UMAD, tournament
+;;NEEDS to build a boolean tree later
+(defn gp [population-size generations test-pairs elitism n]
   "Runs genetic programming to solve, or approximately solve, a floating-point
   symbolic regression problem in the context of the given population-size,
   number of generations to run, and test-pairs."
@@ -224,11 +246,17 @@
       (best population)
       (if elitism
         (recur (conj (repeatedly (dec population-size)
-                           #(make-child population test-pairs))
+                              (case n
+                                     1 #(make-child1 population test-pairs)
+                                     2 #(make-child2 population test-pairs)
+                                     3 #(make-child3 population test-pairs)))
                      (best population))
                (inc generation))
         (recur (repeatedly population-size
-                         #(make-child population test-pairs))
+                           (case n
+                             1 #(make-child1 population test-pairs)
+                             2 #(make-child2 population test-pairs)
+                             3 #(make-child3 population test-pairs)))
              (inc generation))))))
 
 (def testseq
@@ -244,8 +272,15 @@
 ;; x^3 - x^2 + x + 1
 (def polynomial2
   (for [x (range -100 100 1)]
-    [x (+ 1 (+ x (- (pow x 3) (* x 2))))]))
+    [x (+ 1 (+ x (- (pow x 3) (pow x 2))))]))
 
-#_(gp 200 100 simple-regression-data true)
+;; x^5 + x^2 + 1 
+(def polynomial3 
+  (for [x (range -30.0 20.0 1.0)] 
+    [x (+ 6 (+ (* x x) (pow x 5)))]))
+
+#_(gp 200 100 simple-regressionP-data true)
 #_(gp 200 100 testseq true)
-#_(gp 200 100 polynomial2 true)
+#_(gp 200 100 polynomial2 true 3)
+#_(gp 200 100 polynomial3 true)
+

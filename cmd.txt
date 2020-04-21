@@ -1,0 +1,7 @@
+How to run intseq2.clj in cmd line
+1. brew install clojure/tools/clojure
+2. clj
+3. load-file "intseq2.clj"
+
+ (if reload)
+ require 'intseq2 :reload-all'
