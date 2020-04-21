@@ -261,6 +261,7 @@
         (recur (filter #(= min-error (:lexicase-error %)) lexicase-candidates) (rest cases)) ;;filters out candidates with greater error than the min error
         ))))
 
+
 (defn mutate [genome add-rate delete-rate]
   "Returns a possibly-mutated copy of genome."
   (let [with-additions (flatten (for [g genome]
@@ -280,7 +281,9 @@
     (vec (concat (take crossover-point genome1)
                  (drop crossover-point genome2)))))
 
-(defn make-child [population test-pairs add-rate delete-rate]
+
+;;UMAD + CROSSOVER + TOURNAMENT
+(defn make-child1 [population test-pairs add-rate delete-rate]
   "Returns a new, evaluated child, produced by mutating the result
   of crossing over parents that are selected from the given population."
   (let [new-genome (mutate (crossover (:genome (select population))
@@ -288,6 +291,22 @@
     {:genome new-genome
      :error  (error new-genome test-pairs)
      :lexicase-error 0}))
+
+;; CROSSOVER + TOURNAMENT
+(defn make-child2 [population test-pairs]
+  "Returns a new, evaluated child, produced by crossing over parents that are selected from the given population."
+  (let [new-genome (crossover (:genome (select population))
+                              (:genome (select population)))]
+    {:genome new-genome
+     :error  (error new-genome test-pairs)}))
+
+;;UMAD + TOURNAMENT
+(defn make-child3 [population test-pairs add-rate delete-rate]
+  "Returns a new, evaluated child, produced by mutating the result
+  of parents that are selected from the given population."
+  (let [new-genome (mutate (:genome (select population)) add-rate delete-rate)]
+    {:genome new-genome
+     :error  (error new-genome test-pairs)}))
 
 (defn report [generation population]
   "Prints a report on the status of the population at the given generation."
@@ -303,7 +322,12 @@
                                       (count population)))
               :best-genome  (:genome current-best)})))
 
-(defn gp [population-size generations test-pairs elitism add-rate delete-rate]
+;;[n] represents different combination of selection and mutation methods
+;; n=1 uses UMAD, crossover, tournament
+;; n=2 uses crossover, tournament (this combination always fails)
+;; n=3 uses UMAD, tournament
+;;NEEDS to build a boolean tree later
+(defn gp [population-size generations test-pairs elitism add-rate delete-rate n]
   "Runs genetic programming to solve, or approximately solve, a floating-point
   symbolic regression problem in the context of the given population-size,
   number of generations to run, and test-pairs."
@@ -316,12 +340,19 @@
       (best population)
       (if elitism
         (recur (conj (repeatedly (dec population-size)
-                                 #(make-child population test-pairs add-rate delete-rate))
+                                 (case n
+                                   1 #(make-child1 population test-pairs add-rate delete-rate)
+                                   2 #(make-child2 population test-pairs)
+                                   3 #(make-child3 population test-pairs add-rate delete-rate)))
                      (best population))
                (inc generation))
         (recur (repeatedly population-size
-                           #(make-child population test-pairs add-rate delete-rate))
+                           (case n
+                             1 #(make-child1 population test-pairs add-rate delete-rate)
+                             2 #(make-child2 population test-pairs)
+                             3 #(make-child3 population test-pairs add-rate delete-rate)))
                (inc generation))))))
+
 
 (def testseq
   (let [seq [1, 2, 3, 4, 5]
@@ -336,12 +367,16 @@
 ;; x^3 - x^2 + x + 1
 (def polynomial2
   (for [x (range -100 100 1)]
-    [x (+ 1 (+ x (- (pow x 3) (* x 2))))]))
+    [x (+ 1 (+ x (- (pow x 3) (pow x 2))))]))
 
 ;; x^5 + x^2 + 1 
 (def polynomial3 
-  (for [x (range -20 20 1)]  
-                            [x (+ 6 (+ (* x x) (pow x 5)))]))
-#_(gp 200 100 simple-regression-data true 0.1 0.1)
-#_(gp 200 100 testseq true 0.1 0.1)
-#_(gp 200 200 polynomial3 true 0.1 0.1)
+  (for [x (range -20.0 20.0 1.0)] 
+           [x (+ 6 (+ (* x x) (pow x 5)))]))
+
+#_(gp 200 100 simple-regression-data true 0.1 0.1 1)
+#_(gp 200 100 testseq true 0.1 0.1 1)
+#_(gp 200 200 polynomial2 true 0.1 0.1 3)
+#_(gp 200 200 polynomial3 true 0.1 0.1 1)
+
+
