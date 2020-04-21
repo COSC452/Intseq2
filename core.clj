@@ -21,16 +21,16 @@
 ;; - Supported instructions pop needed values from the stack and push results on the stack
 ;; - If there aren't sufficient arguments for an instruction, then it does nothing
 
-(def ingredients '(+ - * / x 0 1 2))
+(def ingredients '(+ - * / x 1 0))
 ;; removed pow due to overflow
 ;;old factorial
 ;;(defn factorial [n]
-  ;;(loop [current (biginteger n)
-        ;; next (dec current)
-       ;;  total 1]
-  ;;  (if (> current 1)
-    ;;  (recur next (dec next) (* total current))
-      ;;total)))
+;;(loop [current (biginteger n)
+;; next (dec current)
+;;  total 1]
+;;  (if (> current 1)
+;;  (recur next (dec next) (* total current))
+;;total)))
 
 ;;returns x^y
 (defn pow [x y]
@@ -63,9 +63,9 @@
                                  (cons (* (second stack) (first stack))
                                        (rest (rest stack))))
                              pow (if (< (count stack) 2)
-                                 stack
-                                 (cons (pow (second stack) (first stack))
-                                       (rest (rest stack))))
+                                   stack
+                                   (cons (pow (second stack) (first stack))
+                                         (rest (rest stack))))
                              / (if (or (< (count stack) 2)
                                        (zero? (first stack)))
                                  stack
@@ -99,28 +99,111 @@
                              mod (if (or (< (count stack) 2) (zero? (second stack)))
                                    stack
                                    (cons (long (mod (first stack) (second stack)))
-                                                  (rest (rest stack))))
+                                         (rest (rest stack))))
                              sqrt (if (< (count stack) 1)
                                     stack
                                     (cons (long (maths/sqrt (first stack)))
-                                                   (rest stack)))
+                                          (rest stack)))
                              gcd (if (< (count stack) 2)
-                                            stack
-                                            (cons (maths/gcd (second stack) (first stack))
-                                                  (rest (rest stack))))
+                                   stack
+                                   (cons (maths/gcd (second stack) (first stack))
+                                         (rest (rest stack))))
                              lcm (if (< (count stack) 2)
-                                            stack
-                                            (cons (maths/gcd (second stack) (first stack))
-                                                  (rest (rest stack))))
+                                   stack
+                                   (cons (maths/gcd (second stack) (first stack))
+                                         (rest (rest stack))))
                              per (if (< (count stack) 1)
-                                            stack
-                                            (cons (com/count-permutations (range (first stack)))
-                                                  (rest stack)))
+                                   stack
+                                   (cons (com/count-permutations (range (first stack)))
+                                         (rest stack)))
                              comb (if (< (count stack) 2)
-                                             stack
-                                             (cons (com/count-combinations (range (first stack)) (second stack))
-                                                   (rest stack)))
+                                    stack
+                                    (cons (com/count-combinations (range (first stack)) (second stack))
+                                          (rest stack)))
                              (cons (first program) stack)))))))))
+
+(defn individual-error [genome input output]
+  "Returns the error of genome in the context of a single pair."
+  (loop [program genome
+         stack ()]
+    ;;(println "Program:" program "Stack:" stack)
+    (if (empty? program)
+      (if (empty? stack)
+        1000000.0
+        (Math/abs (double (- output (first stack)))))       ;; Math/abs only takes in floating points, which causes the "No matching method abs found taking 1 args"
+      (recur (rest program)
+             (case (first program)
+               + (if (< (count stack) 2)
+                   stack
+                   (cons (+ (second stack) (first stack))
+                         (rest (rest stack))))
+               - (if (< (count stack) 2)
+                   stack
+                   (cons (- (second stack) (first stack))
+                         (rest (rest stack))))
+               * (if (< (count stack) 2)
+                   stack
+                   (cons (* (second stack) (first stack))
+                         (rest (rest stack))))
+               pow (if (< (count stack) 2)
+                     stack
+                     (cons (pow (second stack) (first stack))
+                           (rest (rest stack))))
+               / (if (or (< (count stack) 2)
+                         (zero? (first stack)))
+                   stack
+                   (cons (long (/ (second stack) (first stack)))
+                         (rest (rest stack))))
+               sin (if (< (count stack) 1)
+                     stack
+                     (cons (long (Math/sin (first stack)))
+                           (rest stack)))
+               cos (if (< (count stack) 1)
+                     stack
+                     (cons (long (Math/cos (first stack)))
+                           (rest stack)))
+               ! (if (< (count stack) 1)
+                   stack
+                   (cons (factorial (first stack))
+                         (rest stack)))
+               tan (if (< (count stack) 1)
+                     stack
+                     (cons (long (Math/tan (first stack)))
+                           (rest stack)))
+               log (if (< (count stack) 1)
+                     stack
+                     (cons (long (Math/log (first stack)))
+                           (rest stack)))
+               x (cons input stack)
+               expt (if (< (count stack) 2)
+                      stack
+                      (cons (long (maths/expt (first stack) (second stack)))
+                            (rest (rest stack))))
+               mod (if (or (< (count stack) 2) (zero? (second stack)))
+                     stack
+                     (cons (long (mod (first stack) (second stack)))
+                           (rest (rest stack))))
+               sqrt (if (< (count stack) 1)
+                      stack
+                      (cons (long (maths/sqrt (first stack)))
+                            (rest stack)))
+               gcd (if (< (count stack) 2)
+                     stack
+                     (cons (maths/gcd (second stack) (first stack))
+                           (rest (rest stack))))
+               lcm (if (< (count stack) 2)
+                     stack
+                     (cons (maths/gcd (second stack) (first stack))
+                           (rest (rest stack))))
+               per (if (< (count stack) 1)
+                     stack
+                     (cons (com/count-permutations (range (first stack)))
+                           (rest stack)))
+               comb (if (< (count stack) 2)
+                      stack
+                      (cons (com/count-combinations (range (first stack)) (second stack))
+                            (rest stack)))
+               (cons (first program) stack))))))
 
 ;; In the following test the program multiplies x by 5.0. For the input 2.0 this will produce
 ;; 10.0, which is exactly what's specified, so the error for that will be 0. For the second
@@ -130,15 +213,12 @@
 #_(error '[5.0 x *]
          '((2.0 10.0) (3.0 16.0) (-0.5 -3.0)))
 
-;;added by lee
-;;HAVE TO FIGURE OUT HOW IT WILL HANDLE NEGATIVE NUMBERS ARE WE GOING TO ACCEPT
-;;FACTORIALS OF NEGATIVE NUMBERS?
 (defn factorial [n] (reduce *' (range 1 (inc n))))
 
 ;;added by lee
 ;;creates a random formula, we can change ingredients later
 (defn new-formula [max-depth]
-  (vec (repeatedly max-depth #(if (< (rand) 0.6)
+  (vec (repeatedly max-depth #(if (< (rand) 0.67)
                                 (first '(x)) (rand-nth ingredients)))))
 ;;added by lee
 ;;creates individual with formula and error key
@@ -149,14 +229,8 @@
 (defn new-individual [test-pairs]
   (let [form (new-formula 5)]
     {:genome form
-     :error  (error form test-pairs)}))
-
-;;previous new-individual
-;;(defn new-individual [test-pairs]
-  ;;"Returns a new, random individual in the context of test-pairs."
-  ;;(let [genome (vec (repeatedly 5 #(rand-nth ingredients)))]
-    ;;{:genome genome
-     ;;:error  (error genome test-pairs)}))
+     :error  (error form test-pairs)
+     :lexicase-error 0}))
 
 (defn best [individuals]
   "Returns the best of the given individuals."
@@ -170,14 +244,32 @@
   "Returns an individual selected from population using a tournament."
   (best (repeatedly 5 #(rand-nth population))))
 
-(defn mutate [genome]
+(defn generate-candidate [candidate case]
+  (let [input (first case)
+        output (second case)]
+    (assoc candidate :lexicase-error (individual-error (:genome candidate) input output))))
+
+(defn lexicase-select [population test-pairs]
+  "Returns an individual selected from population using lexicase selection"
+  (loop [candidates (population)
+         cases (shuffle test-pairs)]
+    (if (or (= (count candidates) 1)                        ;; based on paper from class
+            (= (count cases) 1))
+      (rand-nth candidates)                                 ;;in either case, pick a random candidate or it will return the only element in candidate
+      (let [lexicase-candidates (map #(generate-candidate % (first cases)) candidates) ;;need to add the test case error to each candidate
+            min-error (apply min (map :lexicase-error lexicase-candidates))] ;;just apply min the smallest of the test case errors
+        (recur (filter #(= min-error (:lexicase-error %)) lexicase-candidates) (rest cases)) ;;filters out candidates with greater error than the min error
+        ))))
+
+
+(defn mutate [genome add-rate delete-rate]
   "Returns a possibly-mutated copy of genome."
   (let [with-additions (flatten (for [g genome]
-                                  (if (< (rand) 1/10)
+                                  (if (< (rand) add-rate)
                                     (shuffle (list g (rand-nth ingredients)))
                                     g)))
         with-deletions (flatten (for [g with-additions]
-                                  (if (< (rand) 1/11)
+                                  (if (< (rand) delete-rate)
                                     ()
                                     g)))]
     (vec with-deletions)))
@@ -189,29 +281,30 @@
     (vec (concat (take crossover-point genome1)
                  (drop crossover-point genome2)))))
 
+
 ;;UMAD + CROSSOVER + TOURNAMENT
-(defn make-child1 [population test-pairs]
+(defn make-child1 [population test-pairs add-rate delete-rate]
   "Returns a new, evaluated child, produced by mutating the result
   of crossing over parents that are selected from the given population."
   (let [new-genome (mutate (crossover (:genome (select population))
-                                      (:genome (select population))))]
+                                      (:genome (select population))) add-rate delete-rate)]
     {:genome new-genome
-     :error  (error new-genome test-pairs)}))
+     :error  (error new-genome test-pairs)
+     :lexicase-error 0}))
 
 ;; CROSSOVER + TOURNAMENT
 (defn make-child2 [population test-pairs]
-  "Returns a new, evaluated child, produced by mutating the result
-  of crossing over parents that are selected from the given population."
+  "Returns a new, evaluated child, produced by crossing over parents that are selected from the given population."
   (let [new-genome (crossover (:genome (select population))
-                                      (:genome (select population)))]
+                              (:genome (select population)))]
     {:genome new-genome
      :error  (error new-genome test-pairs)}))
 
 ;;UMAD + TOURNAMENT
-(defn make-child3 [population test-pairs]
+(defn make-child3 [population test-pairs add-rate delete-rate]
   "Returns a new, evaluated child, produced by mutating the result
   of parents that are selected from the given population."
-  (let [new-genome (mutate (:genome (select population)))]
+  (let [new-genome (mutate (:genome (select population)) add-rate delete-rate)]
     {:genome new-genome
      :error  (error new-genome test-pairs)}))
 
@@ -228,12 +321,13 @@
                                            (reduce +))
                                       (count population)))
               :best-genome  (:genome current-best)})))
+
 ;;[n] represents different combination of selection and mutation methods
 ;; n=1 uses UMAD, crossover, tournament
-;; n=2 uses crossover, tournament
+;; n=2 uses crossover, tournament (this combination always fails)
 ;; n=3 uses UMAD, tournament
 ;;NEEDS to build a boolean tree later
-(defn gp [population-size generations test-pairs elitism n]
+(defn gp [population-size generations test-pairs elitism add-rate delete-rate n]
   "Runs genetic programming to solve, or approximately solve, a floating-point
   symbolic regression problem in the context of the given population-size,
   number of generations to run, and test-pairs."
@@ -246,21 +340,22 @@
       (best population)
       (if elitism
         (recur (conj (repeatedly (dec population-size)
-                              (case n
-                                     1 #(make-child1 population test-pairs)
-                                     2 #(make-child2 population test-pairs)
-                                     3 #(make-child3 population test-pairs)))
+                                 (case n
+                                   1 #(make-child1 population test-pairs add-rate delete-rate)
+                                   2 #(make-child2 population test-pairs)
+                                   3 #(make-child3 population test-pairs add-rate delete-rate)))
                      (best population))
                (inc generation))
         (recur (repeatedly population-size
                            (case n
-                             1 #(make-child1 population test-pairs)
+                             1 #(make-child1 population test-pairs add-rate delete-rate)
                              2 #(make-child2 population test-pairs)
-                             3 #(make-child3 population test-pairs)))
-             (inc generation))))))
+                             3 #(make-child3 population test-pairs add-rate delete-rate)))
+               (inc generation))))))
+
 
 (def testseq
-  (let [seq [1,2,3,4,5]
+  (let [seq [1, 2, 3, 4, 5]
         ind (range (count seq))]
     (map #(vec [%1 %2]) ind seq)))
 
@@ -276,11 +371,12 @@
 
 ;; x^5 + x^2 + 1 
 (def polynomial3 
-  (for [x (range -30.0 20.0 1.0)] 
-    [x (+ 6 (+ (* x x) (pow x 5)))]))
+  (for [x (range -20.0 20.0 1.0)] 
+           [x (+ 6 (+ (* x x) (pow x 5)))]))
 
-#_(gp 200 100 simple-regressionP-data true)
-#_(gp 200 100 testseq true)
-#_(gp 200 100 polynomial2 true 3)
-#_(gp 200 100 polynomial3 true)
+#_(gp 200 100 simple-regression-data true 0.1 0.1 1)
+#_(gp 200 100 testseq true 0.1 0.1 1)
+#_(gp 200 200 polynomial2 true 0.1 0.1 3)
+#_(gp 200 200 polynomial3 true 0.1 0.1 1)
+
 
