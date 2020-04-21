@@ -247,7 +247,7 @@
 (defn generate-candidate [candidate case]
   (let [input (first case)
         output (second case)]
-    (update candidate :lexicase-error (individual-error (:genome candidate) input output))))
+    (assoc candidate :lexicase-error (individual-error (:genome candidate) input output))))
 
 (defn lexicase-select [population test-pairs]
   "Returns an individual selected from population using lexicase selection"
