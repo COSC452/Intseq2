@@ -229,8 +229,8 @@
 (defn new-individual [test-pairs]
   (let [form (new-formula 5)]
     {:genome form
-     :error  (error form test-pairs)})
-  :lexicase-error 0)
+     :error  (error form test-pairs)
+     :lexicase-error 0}))
 
 (defn best [individuals]
   "Returns the best of the given individuals."
@@ -286,7 +286,8 @@
   (let [new-genome (mutate (crossover (:genome (select population))
                                       (:genome (select population))) add-rate delete-rate)]
     {:genome new-genome
-     :error  (error new-genome test-pairs)}))
+     :error  (error new-genome test-pairs)
+     :lexicase-error 0}))
 
 (defn report [generation population]
   "Prints a report on the status of the population at the given generation."
