@@ -22,15 +22,8 @@
 ;; - If there aren't sufficient arguments for an instruction, then it does nothing
 
 (def ingredients '(+ - * / x 1 0))
-;; removed pow due to overflow
-;;old factorial
-;;(defn factorial [n]
-;;(loop [current (biginteger n)
-;; next (dec current)
-;;  total 1]
-;;  (if (> current 1)
-;;  (recur next (dec next) (* total current))
-;;total)))
+
+(defn factorial [n] (reduce *' (range 1 (inc n))))
 
 ;;returns x^y
 (defn pow [x y]
@@ -213,8 +206,6 @@
 #_(error '[5.0 x *]
          '((2.0 10.0) (3.0 16.0) (-0.5 -3.0)))
 
-(defn factorial [n] (reduce *' (range 1 (inc n))))
-
 ;;added by lee
 ;;creates a random formula, we can change ingredients later
 (defn new-formula [max-depth]
@@ -222,10 +213,6 @@
                                 (first '(x)) (rand-nth ingredients)))))
 ;;added by lee
 ;;creates individual with formula and error key
-;;have to adjust how we measure error later
-;;I think we are going to discuss as a group later of how long we want to start off our formulas, rn it is 5
-;;later the '(3 2) will be replaced with '(what n equals and the integer that coincides with n in the sequence)
-;; rn n=3 and 2 is the answer aka the number in the sequence
 (defn new-individual [test-pairs]
   (let [form (new-formula 5)]
     {:genome form
@@ -242,7 +229,7 @@
 
 (defn select [population]
   "Returns an individual selected from population using a tournament."
-  (best (repeatedly 5 #(rand-nth population))))
+  (best (repeatedly 20 #(rand-nth population))))
 
 (defn generate-candidate [candidate case]
   (let [input (first case)
@@ -274,6 +261,18 @@
                                     g)))]
     (vec with-deletions)))
 
+;;Mutate 2 allows for a greater change/chance of mutation
+(defn mutate2 [genome]
+  (let [with-additions (flatten (for [g genome]
+                                  (if (< (rand) 1/4)
+                                    (shuffle (list g (rand-nth ingredients)))
+                                    g)))
+        with-deletions (flatten (for [g with-additions]
+                                  (if (< (rand) 1/5)
+                                    ()
+                                    g)))]
+    (vec with-deletions)))
+
 (defn crossover [genome1 genome2]
   "Returns a one-point crossover product of genome1 and genome2."
   (let [crossover-point (rand-int (inc (min (count genome1)
@@ -281,6 +280,17 @@
     (vec (concat (take crossover-point genome1)
                  (drop crossover-point genome2)))))
 
+;;UMAD + UMAD2 + CROSSOVER + Tournament
+(defn make-child_neg1 [population test-pairs add-rate delete-rate]
+  "Returns a new, evaluated child, produced by mutating the result
+  of crossing over parents that are selected from the given population."
+  (let [new-genome (if(> (rand) 1/20)
+                     (mutate (crossover (:genome (select population))
+                                        (:genome (select population))) add-rate delete-rate)
+                     (mutate2 (crossover (:genome (select population))
+                                         (:genome (select population)))))]
+    {:genome new-genome
+     :error  (error new-genome test-pairs)}))
 
 ;;UMAD + CROSSOVER + TOURNAMENT
 (defn make-child1 [population test-pairs add-rate delete-rate]
@@ -308,6 +318,16 @@
     {:genome new-genome
      :error  (error new-genome test-pairs)}))
 
+;;UMAD + UMAD2 + TOURNAMENT
+(defn make-child_neg3 [population test-pairs add-rate delete-rate]
+  "Returns a new, evaluated child, produced by mutating the result
+  of crossing over parents that are selected from the given population."
+  (let [new-genome (if(> (rand) 1/20)
+                     (mutate (:genome (select population)) add-rate delete-rate)
+                     (mutate2 (:genome (select population))))]
+    {:genome new-genome
+     :error  (error new-genome test-pairs)}))
+
 (defn report [generation population]
   "Prints a report on the status of the population at the given generation."
   (let [current-best (best population)]
@@ -323,14 +343,13 @@
               :best-genome  (:genome current-best)})))
 
 ;;[n] represents different combination of selection and mutation methods
+;; n=-1 uses UMAD, UMAD2, crossover, tournament
 ;; n=1 uses UMAD, crossover, tournament
 ;; n=2 uses crossover, tournament (this combination always fails)
 ;; n=3 uses UMAD, tournament
+;; n=-3 uses UMAD, UMAD2, tournamnet
 ;;NEEDS to build a boolean tree later
 (defn gp [population-size generations test-pairs elitism add-rate delete-rate n]
-  "Runs genetic programming to solve, or approximately solve, a floating-point
-  symbolic regression problem in the context of the given population-size,
-  number of generations to run, and test-pairs."
   (loop [population (repeatedly population-size
                                 #(new-individual test-pairs))
          generation 0]
@@ -341,21 +360,24 @@
       (if elitism
         (recur (conj (repeatedly (dec population-size)
                                  (case n
+                                   -1 #(make-child_neg1 population test-pairs add-rate delete-rate)
                                    1 #(make-child1 population test-pairs add-rate delete-rate)
                                    2 #(make-child2 population test-pairs)
-                                   3 #(make-child3 population test-pairs add-rate delete-rate)))
+                                   3 #(make-child3 population test-pairs add-rate delete-rate)
+                                   -3 #(make-child_neg3 population test-pairs add-rate delete-rate)))
                      (best population))
                (inc generation))
         (recur (repeatedly population-size
                            (case n
+                             -1 #(make-child_neg1 population test-pairs add-rate delete-rate)
                              1 #(make-child1 population test-pairs add-rate delete-rate)
                              2 #(make-child2 population test-pairs)
-                             3 #(make-child3 population test-pairs add-rate delete-rate)))
+                             3 #(make-child3 population test-pairs add-rate delete-rate)
+                             -3 #(make-child_neg3 population test-pairs add-rate delete-rate)))
                (inc generation))))))
 
-
 (def testseq
-  (let [seq [1, 2, 3, 4, 5]
+  (let [seq [1,2,3,4,5]
         ind (range (count seq))]
     (map #(vec [%1 %2]) ind seq)))
 
@@ -364,19 +386,106 @@
   (for [x (range -100 100 1)]
     [x (+ (* x x) x 1)]))
 
-;; x^3 - x^2 + x + 1
+;; x^3 - x + 1
+(def polynomial
+  (for [x (range -100 100 1)]
+    [x (+ 1 (+ x (- (pow x 3) (* x 2))))]))
+
+;; x^3 - x^2 + x+ 1
 (def polynomial2
   (for [x (range -100 100 1)]
     [x (+ 1 (+ x (- (pow x 3) (pow x 2))))]))
 
 ;; x^5 + x^2 + 1 
 (def polynomial3 
-  (for [x (range -20.0 20.0 1.0)] 
-           [x (+ 6 (+ (* x x) (pow x 5)))]))
+  (for [x (range -20 20 1)] 
+                           [x (+ 6 (+ (* x x) (pow x 5)))]))
 
-#_(gp 200 100 simple-regression-data true 0.1 0.1 1)
-#_(gp 200 100 testseq true 0.1 0.1 1)
-#_(gp 200 200 polynomial2 true 0.1 0.1 3)
-#_(gp 200 200 polynomial3 true 0.1 0.1 1)
+#_(gp 200 100 testseq true 1/10 1/11 2)
+#_(gp 200 100 simple-regression-data true 1/10 1/11 2)
+#_(gp 200 200 polynomial true 1/10 1/11 2)
+#_(gp 200 200 polynomial2 true 1/10 1/11 2)
+#_(gp 200 200 polynomial3 true 1/10 1/11 -1)
 
+;; n=-1 uses UMAD, UMAD2, crossover, tournament
+;; n=1 uses UMAD, crossover, tournament
+;; n=2 uses crossover, tournament (this combination always fails)
+;; n=3 uses UMAD, tournament
+;; n=-3 uses UMAD, UMAD2, tournamnet
 
+;;added by lee
+(defn gp_error [population-size generations test-pairs elitism add-rate delete-rate n]
+  (loop [population (repeatedly population-size
+                                #(new-individual test-pairs))
+         generation 0]
+    (if (or (< (:error (best population)) 0.1)
+            (>= generation generations))
+      (best population)
+      (if elitism
+        (recur (conj (repeatedly (dec population-size)
+                                 (case n
+                                   -1 #(make-child_neg1 population test-pairs add-rate delete-rate)
+                                   1 #(make-child1 population test-pairs add-rate delete-rate)
+                                   2 #(make-child2 population test-pairs)
+                                   3 #(make-child3 population test-pairs add-rate delete-rate)
+                                   -3 #(make-child_neg3 population test-pairs add-rate delete-rate)))
+                     (best population))
+               (inc generation))
+        (recur (repeatedly population-size
+                           (case n
+                             -1 #(make-child_neg1 population test-pairs add-rate delete-rate)
+                             1 #(make-child1 population test-pairs add-rate delete-rate)
+                             2 #(make-child2 population test-pairs)
+                             3 #(make-child3 population test-pairs add-rate delete-rate)
+                             -3 #(make-child_neg3 population test-pairs add-rate delete-rate)))
+               (inc generation))))))
+
+(defn average_error [test_seq n]
+  (loop [sum 0 run 0]
+    (if (>= run 100)
+      (println (/ sum 100))
+      (recur (+ (:error(gp_error 200 100 test_seq true 1/10 1/11 n)) sum) (inc run)))))
+
+#_(average_error testseq -1)
+#_(average_error simple-regression-data -1)
+#_(average_error polynomial -1)
+#_(average_error polynomial2 -1)
+#_(average_error polynomial3  -1)
+
+(defn gp_gen [population-size generations test-pairs elitism add-rate delete-rate n]
+  (loop [population (repeatedly population-size
+                                #(new-individual test-pairs))
+         generation 0]
+    (if (or (< (:error (best population)) 0.1)
+            (>= generation generations))
+      generation
+      (if elitism
+        (recur (conj (repeatedly (dec population-size)
+                                 (case n
+                                   -1 #(make-child_neg1 population test-pairs add-rate delete-rate)
+                                   1 #(make-child1 population test-pairs add-rate delete-rate)
+                                   2 #(make-child2 population test-pairs)
+                                   3 #(make-child3 population test-pairs add-rate delete-rate)
+                                   -3 #(make-child_neg3 population test-pairs add-rate delete-rate)))
+                     (best population))
+               (inc generation))
+        (recur (repeatedly population-size
+                           (case n
+                             -1 #(make-child_neg1 population test-pairs add-rate delete-rate)
+                             1 #(make-child1 population test-pairs add-rate delete-rate)
+                             2 #(make-child2 population test-pairs)
+                             3 #(make-child3 population test-pairs add-rate delete-rate)
+                             -3 #(make-child_neg3 population test-pairs add-rate delete-rate)))
+               (inc generation))))))
+
+(defn average_gen [test_seq n]
+  (loop [sum 0 run 0]
+    (if (>= run 100)
+      (println (/ sum 100))
+      (recur (+ (gp_gen 200 100 test_seq true 1/10 1/11 n) sum) (inc run)))))
+
+#_(average_gen testseq -1)
+#_(average_gen simple-regression-data -1)
+#_(average_gen polynomial -1)
+#_(average_gen polynomial2 -1)
+#_(average_gen polynomial3  -1)
