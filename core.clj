@@ -229,8 +229,8 @@
 
 (defn select [population type test-pairs]
   (case type
-    :tournament (tournament-select [population])
-    :lexicase (lexicase-select [population test-pairs])
+    :tournament (tournament-select population)
+    :lexicase (lexicase-select population test-pairs)
     )
   )
 
@@ -300,10 +300,10 @@
                      (if mutate? ;; if no crossover
                        (if (< (rand) 1/2) ;; if no crossover but mutate
                          (mutate genome1 add-rate delete-rate) ;;mutate genome1 if < 1/2 as newgenome
-                         (mutate genome2 add-rate delete-rate)) ;;mutate genome2 if < 1/2 as newgenome
+                         (mutate genome2 add-rate delete-rate)) ;;mutate genome2 if > 1/2 as newgenome
                        (if (< (rand) 1/2)
-                         genome1 ;;if no crossover, no mutate, return genome1 as new genome
-                         genome2) ;;if no crossover, no mutate, return genome2 as new genome
+                         genome1 ;;if no crossover, no mutate, return genome1 as new genome if < 1/2
+                         genome2) ;;if no crossover, no mutate, return genome2 as new genome if > 1/2
                        ))]
     {:genome         new-genome
      :error          (error new-genome test-pairs)
