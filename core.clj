@@ -380,6 +380,8 @@
   (for [x (range -20 20 1)]  
                             [x (+ 6 (+ (* x x) (pow x 5)))]))
 
+;;These are set to have population of 200, max 100 gen, crossover, mutation with a 1/10 addition rate
+;;and 1/11 deletion rate, and tournament selection
 #_(gp-main 200 100 testseq true 1/10 1/11 2 true true false :tournament)
 #_(gp-main 200 100 simple-regression-data true 1/10 1/11 2 true true false :tournament)
 #_(gp-main 200 100 polynomial true 1/10 1/11 2 true true false :tournament)
@@ -442,6 +444,11 @@
 #_(average_gen 200 100 polynomial true 1/10 1/11 2 true true false :tournament)
 #_(average_gen 200 100 polynomial2 true 1/10 1/11 2 true true false :tournament)
 #_(average_gen 200 100 polynomial3  true 1/10 1/11 2 true true false :tournament)
+
+
+
+
+;;This is based on cases. Not sure if we are using it anymore. Didn't want to accidently delete.
 
 ;;UMAD + UMAD2 + CROSSOVER + Tournament
 (defn make-child_neg1 [population test-pairs add-rate delete-rate]
