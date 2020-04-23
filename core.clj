@@ -396,7 +396,7 @@
   (for [x (range -100 100 1)]
     [x (+ 1 (+ x (- (pow x 3) (pow x 2))))]))
 
-;; x^5 + x^2 + 1 
+;; x^5 + x^2 + 6
 (def polynomial3 
   (for [x (range -20 20 1)] 
                            [x (+ 6 (+ (* x x) (pow x 5)))]))
