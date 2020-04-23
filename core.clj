@@ -382,11 +382,11 @@
 
 ;;These are set to have population of 200, max 100 gen, crossover, mutation with a 1/10 addition rate
 ;;and 1/11 deletion rate, and tournament selection
-#_(gp-main 200 100 testseq true 1/10 1/11 2 true true false :tournament)
-#_(gp-main 200 100 simple-regression-data true 1/10 1/11 2 true true false :tournament)
-#_(gp-main 200 100 polynomial true 1/10 1/11 2 true true false :tournament)
-#_(gp-main 200 100 polynomial2 true 1/10 1/11 2 true true false :tournament)
-#_(gp-main 200 100 polynomial3  true 1/10 1/11 2 true true false :tournament)
+#_(gp-main 200 100 testseq true 1/10 1/11 true true false :tournament)
+#_(gp-main 200 100 simple-regression-data true 1/10 1/11 true true false :tournament)
+#_(gp-main 200 100 polynomial true 1/10 1/11 true true false :tournament)
+#_(gp-main 200 100 polynomial2 true 1/10 1/11 true true false :tournament)
+#_(gp-main 200 100 polynomial3  true 1/10 1/11 true true false :tournament)
 
 ;;added by lee
 (defn gp_error [population-size generations test-pairs elitism add-rate delete-rate mutate? crossover? double_mutate? select-type]
@@ -411,11 +411,11 @@
       (println (/ sum 100))
       (recur (+ (:error(gp_error population-size generations test_seq elitism add-rate delete-rate mutate crossover double_mutate selection-type)) sum) (inc run)))))
 
-#_(average_error 200 100 testseq true 1/10 1/11 2 true true false :tournament)
-#_(average_error 200 100 simple-regression-data true 1/10 1/11 2 true true false :tournament)
-#_(average_error 200 100 polynomial true 1/10 1/11 2 true true false :tournament)
-#_(average_error 200 100 polynomial2 true 1/10 1/11 2 true true false :tournament)
-#_(average_error 200 100 polynomial3  true 1/10 1/11 2 true true false :tournament)
+#_(average_error 200 100 testseq true 1/10 1/11 true true false :tournament)
+#_(average_error 200 100 simple-regression-data true 1/10 1/11 true true false :tournament)
+#_(average_error 200 100 polynomial true 1/10 1/11 true true false :tournament)
+#_(average_error 200 100 polynomial2 true 1/10 1/11 true true false :tournament)
+#_(average_error 200 100 polynomial3  true 1/10 1/11 true true false :tournament)
 
 (defn gp_gen [population-size generations test-pairs elitism add-rate delete-rate mutate? crossover? double_mutate? select-type]
   (loop [population (repeatedly population-size
@@ -439,11 +439,11 @@
       (println (/ sum 100))
       (recur (+ (gp_gen population-size generations test_seq elitism add-rate delete-rate mutate crossover double_mutate selection-type) sum) (inc run)))))
 
-#_(average_gen 200 100 testseq true 1/10 1/11 2 true true false :tournament)
-#_(average_gen 200 100 simple-regression-data true 1/10 1/11 2 true true false :tournament)
-#_(average_gen 200 100 polynomial true 1/10 1/11 2 true true false :tournament)
-#_(average_gen 200 100 polynomial2 true 1/10 1/11 2 true true false :tournament)
-#_(average_gen 200 100 polynomial3  true 1/10 1/11 2 true true false :tournament)
+#_(average_gen 200 100 testseq true 1/10 1/11 true true false :tournament)
+#_(average_gen 200 100 simple-regression-data true 1/10 1/11 true true false :tournament)
+#_(average_gen 200 100 polynomial true 1/10 1/11 true true false :tournament)
+#_(average_gen 200 100 polynomial2 true 1/10 1/11 true true false :tournament)
+#_(average_gen 200 100 polynomial3  true 1/10 1/11 true true false :tournament)
 
 
 
