@@ -215,8 +215,8 @@
 ;;creates individual with formula and error key
 (defn new-individual [test-pairs]
   (let [form (new-formula 5)]
-    {:genome form
-     :error  (error form test-pairs)
+    {:genome         form
+     :error          (error form test-pairs)
      :lexicase-error 0}))
 
 (defn best [individuals]
@@ -227,7 +227,14 @@
               i2))
           individuals))
 
-(defn select [population]
+(defn select [population type test-pairs]
+  (case type
+    :tournament (tournament-select population)
+    :lexicase (lexicase-select population test-pairs)
+    )
+  )
+
+(defn tournament-select [population]
   "Returns an individual selected from population using a tournament."
   (best (repeatedly 20 #(rand-nth population))))
 
@@ -280,11 +287,34 @@
     (vec (concat (take crossover-point genome1)
                  (drop crossover-point genome2)))))
 
+(defn make-child [population test-pairs add-rate delete-rate mutate? crossover? select-type]
+  "Returns a new, evaluated child, produced by mutating the result
+  of crossing over parents that are selected from the given population."
+  (let [genome1 (:genome (select population select-type test-pairs))
+        genome2 (:genome (select population select-type test-pairs))
+        crossover12 (crossover genome1 genome2)
+        new-genome (if crossover? ;;if crossover
+                     (if mutate?  ;;if mutate
+                       (mutate crossover12 add-rate delete-rate) ;;new genome is crossover+mutated
+                       crossover12) ;;new genome is just crossover
+                     (if mutate? ;; if no crossover
+                       (if (< (rand) 1/2) ;; if no crossover but mutate
+                         (mutate genome1 add-rate delete-rate) ;;mutate genome1 if < 1/2 as newgenome
+                         (mutate genome2 add-rate delete-rate)) ;;mutate genome2 if > 1/2 as newgenome
+                       (if (< (rand) 1/2)
+                         genome1 ;;if no crossover, no mutate, return genome1 as new genome if < 1/2
+                         genome2) ;;if no crossover, no mutate, return genome2 as new genome if > 1/2
+                       ))]
+    {:genome         new-genome
+     :error          (error new-genome test-pairs)
+     :lexicase-error 0}))
+
+
 ;;UMAD + UMAD2 + CROSSOVER + Tournament
 (defn make-child_neg1 [population test-pairs add-rate delete-rate]
   "Returns a new, evaluated child, produced by mutating the result
   of crossing over parents that are selected from the given population."
-  (let [new-genome (if(> (rand) 1/20)
+  (let [new-genome (if (> (rand) 1/20)
                      (mutate (crossover (:genome (select population))
                                         (:genome (select population))) add-rate delete-rate)
                      (mutate2 (crossover (:genome (select population))
@@ -298,8 +328,8 @@
   of crossing over parents that are selected from the given population."
   (let [new-genome (mutate (crossover (:genome (select population))
                                       (:genome (select population))) add-rate delete-rate)]
-    {:genome new-genome
-     :error  (error new-genome test-pairs)
+    {:genome         new-genome
+     :error          (error new-genome test-pairs)
      :lexicase-error 0}))
 
 ;; CROSSOVER + TOURNAMENT
@@ -322,7 +352,7 @@
 (defn make-child_neg3 [population test-pairs add-rate delete-rate]
   "Returns a new, evaluated child, produced by mutating the result
   of crossing over parents that are selected from the given population."
-  (let [new-genome (if(> (rand) 1/20)
+  (let [new-genome (if (> (rand) 1/20)
                      (mutate (:genome (select population)) add-rate delete-rate)
                      (mutate2 (:genome (select population))))]
     {:genome new-genome
@@ -377,7 +407,7 @@
                (inc generation))))))
 
 (def testseq
-  (let [seq [1,2,3,4,5]
+  (let [seq [1, 2, 3, 4, 5]
         ind (range (count seq))]
     (map #(vec [%1 %2]) ind seq)))
 
@@ -398,8 +428,8 @@
 
 ;; x^5 + x^2 + 6
 (def polynomial3 
-  (for [x (range -20 20 1)] 
-                           [x (+ 6 (+ (* x x) (pow x 5)))]))
+  (for [x (range -20 20 1)]  
+                            [x (+ 6 (+ (* x x) (pow x 5)))]))
 
 #_(gp 200 100 testseq true 1/10 1/11 2)
 #_(gp 200 100 simple-regression-data true 1/10 1/11 2)
@@ -444,7 +474,7 @@
   (loop [sum 0 run 0]
     (if (>= run 100)
       (println (/ sum 100))
-      (recur (+ (:error(gp_error 200 100 test_seq true 1/10 1/11 n)) sum) (inc run)))))
+      (recur (+ (:error (gp_error 200 100 test_seq true 1/10 1/11 n)) sum) (inc run)))))
 
 #_(average_error testseq -1)
 #_(average_error simple-regression-data -1)
@@ -476,6 +506,27 @@
                              2 #(make-child2 population test-pairs)
                              3 #(make-child3 population test-pairs add-rate delete-rate)
                              -3 #(make-child_neg3 population test-pairs add-rate delete-rate)))
+               (inc generation))))))
+
+(defn gp-main [population-size generations test-pairs elitism add-rate delete-rate mutate? crossover? select-type]
+  "Runs genetic programming to solve, or approximately solve, a
+  symbolic regression problem in the context of the given population-size,
+  number of generations to run, and test-pairs.
+  This version of gp has mutate and crossover as conditionals."
+  (loop [population (repeatedly population-size
+                                #(new-individual test-pairs))
+         generation 0]
+    (report generation population)
+    (if (or (< (:error (best population)) 0.1)
+            (>= generation generations))
+      (best population)
+      (if elitism
+        (recur (conj (repeatedly (dec population-size)
+                                 #(make-child population test-pairs add-rate delete-rate mutate? crossover? select-type))
+                     (best population))
+               (inc generation))
+        (recur (repeatedly population-size
+                           #(make-child population test-pairs add-rate delete-rate mutate? crossover? select-type))
                (inc generation))))))
 
 (defn average_gen [test_seq n]
