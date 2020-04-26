@@ -117,86 +117,7 @@
 
 (defn individual-error [genome input output]
   "Returns the error of genome in the context of a single pair."
-  (loop [program genome
-         stack ()]
-    ;;(println "Program:" program "Stack:" stack)
-    (if (empty? program)
-      (if (empty? stack)
-        1000000.0
-        (Math/abs (double (- output (first stack)))))       ;; Math/abs only takes in floating points, which causes the "No matching method abs found taking 1 args"
-      (recur (rest program)
-             (case (first program)
-               + (if (< (count stack) 2)
-                   stack
-                   (cons (+ (second stack) (first stack))
-                         (rest (rest stack))))
-               - (if (< (count stack) 2)
-                   stack
-                   (cons (- (second stack) (first stack))
-                         (rest (rest stack))))
-               * (if (< (count stack) 2)
-                   stack
-                   (cons (* (second stack) (first stack))
-                         (rest (rest stack))))
-               pow (if (< (count stack) 2)
-                     stack
-                     (cons (pow (second stack) (first stack))
-                           (rest (rest stack))))
-               / (if (or (< (count stack) 2)
-                         (zero? (first stack)))
-                   stack
-                   (cons (long (/ (second stack) (first stack)))
-                         (rest (rest stack))))
-               sin (if (< (count stack) 1)
-                     stack
-                     (cons (long (Math/sin (first stack)))
-                           (rest stack)))
-               cos (if (< (count stack) 1)
-                     stack
-                     (cons (long (Math/cos (first stack)))
-                           (rest stack)))
-               ! (if (< (count stack) 1)
-                   stack
-                   (cons (factorial (first stack))
-                         (rest stack)))
-               tan (if (< (count stack) 1)
-                     stack
-                     (cons (long (Math/tan (first stack)))
-                           (rest stack)))
-               log (if (< (count stack) 1)
-                     stack
-                     (cons (long (Math/log (first stack)))
-                           (rest stack)))
-               x (cons input stack)
-               expt (if (< (count stack) 2)
-                      stack
-                      (cons (long (maths/expt (first stack) (second stack)))
-                            (rest (rest stack))))
-               mod (if (or (< (count stack) 2) (zero? (second stack)))
-                     stack
-                     (cons (long (mod (first stack) (second stack)))
-                           (rest (rest stack))))
-               sqrt (if (< (count stack) 1)
-                      stack
-                      (cons (long (maths/sqrt (first stack)))
-                            (rest stack)))
-               gcd (if (< (count stack) 2)
-                     stack
-                     (cons (maths/gcd (second stack) (first stack))
-                           (rest (rest stack))))
-               lcm (if (< (count stack) 2)
-                     stack
-                     (cons (maths/gcd (second stack) (first stack))
-                           (rest (rest stack))))
-               per (if (< (count stack) 1)
-                     stack
-                     (cons (com/count-permutations (range (first stack)))
-                           (rest stack)))
-               comb (if (< (count stack) 2)
-                      stack
-                      (cons (com/count-combinations (range (first stack)) (second stack))
-                            (rest stack)))
-               (cons (first program) stack))))))
+  (error genome (list (list input output))))
 
 ;; In the following test the program multiplies x by 5.0. For the input 2.0 this will produce
 ;; 10.0, which is exactly what's specified, so the error for that will be 0. For the second
@@ -220,7 +141,7 @@
      :lexicase-error 0}))
 
 (defn best [individuals]
-  "Returns the best of the given individuals."
+  "Returns the best (ties broken arbitrarily) of the given individuals."
   (reduce (fn [i1 i2]
             (if (< (:error i1) (:error i2))
               i1
@@ -240,13 +161,13 @@
   "Returns an individual selected from population using lexicase selection"
   (loop [candidates (population)
          cases (shuffle test-pairs)]
-    (if (or (= (count candidates) 1)                        ;; based on paper from class
-            (= (count cases) 1))
-      (rand-nth candidates)                                 ;;in either case, pick a random candidate or it will return the only element in candidate
       (let [lexicase-candidates (map #(generate-candidate % (first cases)) candidates) ;;need to add the test case error to each candidate
             min-error (apply min (map :lexicase-error lexicase-candidates))] ;;just apply min the smallest of the test case errors
-        (recur (filter #(= min-error (:lexicase-error %)) lexicase-candidates) (rest cases)) ;;filters out candidates with greater error than the min error
-        ))))
+        (if (or (= (count candidates) 1)
+                (= (count cases) 1))
+          (rand-nth candidates)                                 ;;in either case, pick a random candidate or it will return the only element in candidate
+          (recur (filter #(= min-error (:lexicase-error %)) lexicase-candidates) (rest cases)) ;;filters out candidates with greater error than the min error
+          ))))
 
 (defn select [population type test-pairs]
   (case type
