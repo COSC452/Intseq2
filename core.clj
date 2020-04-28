@@ -29,6 +29,32 @@
 (defn pow [x y]
   (reduce * (repeat y x)))
 
+;;solves g^x = y
+(defn disclog [base target]
+  (let [exp (/ (Math/log target) (Math/log base))
+        floor (Math/floor exp)
+        ceiling (Math/ceil exp)]
+        (if (= (pow base floor) target)
+          (biginteger floor)
+          (if (= (pow base ceiling) target)
+            (biginteger ceiling)
+            nil))))
+
+(defn discdiv [x divisor]
+  (let [quotient (/ x divisor)
+        floor (Math/floor quotient)
+        ceiling (Math/ceil quotient)]
+    (print floor)
+    (print ceiling)
+    (if (= (* floor divisor) x)
+      (biginteger floor)
+      (if (= (* ceiling divisor) x)
+        (biginteger ceiling)
+        nil))))
+
+(discdiv 10 2)
+
+
 (defn error [genome test-pairs]
   "Returns the error of genome in the context of test-pairs."
   (reduce + (for [pair test-pairs]
