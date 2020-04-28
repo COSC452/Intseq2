@@ -207,36 +207,36 @@
     (vec (concat (take crossover-point genome1)
                  (drop crossover-point genome2)))))
 
-(defn make-child [population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type]
+(defn make-child [population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate]
   "Returns a new, evaluated child, produced by mutating the result
   of crossing over parents that are selected from the given population."
   (let [genome1 (:genome (select population select-type test-pairs))
         genome2 (:genome (select population select-type test-pairs))
         crossover12 (crossover genome1 genome2)
         new-genome (if crossover? ;;if crossover
-                     (if mutate?  ;;if mutate
-                       (mutate crossover12 add-rate delete-rate) ;;new genome is crossover+mutated
+                     (if (and mutate? (< (rand) base-mutate-rate))  ;;if crossover, determine if we should mutate
                        (if double_mutate? ;;if double mutation
-                         (if (> (rand) 1/20) ;; if crossover and double mutation (no mutation)
-                           (mutate crossover12 add-rate delete-rate) ;;new genome is crossover+mutated if < 1/2
-                           (mutate2 crossover12)) ;;new genome is crossover+mutated2 if > 1/2
-                         crossover12)) ;;new genome is just crossover
-                     (if mutate? ;; if no crossover
-                       (if (< (rand) 1/2) ;; if no crossover but mutate
-                         (if (< (rand) 1/2) add-rate delete-rate) ;; mutate genome1 if < 1/2 as newgenome
-                         (mutate genome2 add-rate delete-rate)) ;; mutate genome2 if > 1/2 as newgenome
-                       (if double_mutate? ;; if double mutation
-                         (if (< (rand) 1/20)
+                         (if (< (rand) 1/20) ;; if crossover and double mutation (no mutation)
+                           (mutate2 crossover12) ;;new genome is crossover+mutated if < 1/2
+                           (mutate crossover12 add-rate delete-rate)) ;;new genome is crossover+mutated2 if > 1/2
+                         (mutate crossover12 add-rate delete-rate)) ;;new genome is just crossover and normal mutate
+                       crossover12)
+                     (if (and mutate? (< (rand) base-mutate-rate)) ;; if no crossover, determine if we should mutate
+                       (if double_mutate? ;; mutation will happen, determine if we will double mutate
+                         (if (< (rand) 1/20) ;; double mutation here based on chance
                            (if (< (rand) 1/2)
                              (mutate2 genome1) ;; mutate2 genome1 if < 1/20 and then < 1/2
                              (mutate2 genome2)) ;; mutate2 genome2 if < 1/20 and the > 1/2
                            (if (< (rand) 1/2)
                              (mutate genome1 add-rate delete-rate) ;; mutate genome1 if > 1/20 and then < 1/2
                              (mutate genome2 add-rate delete-rate))) ;; mutate genome2 if > /120 and then > 1/2
-                       (if (< (rand) 1/2)
-                         genome1 ;;if no crossover, no mutate, no doublemuate return genome1 as new genome if < 1/2
-                         genome2));;if no crossover, no mutate, no doublemutate return genome2 as new genome if > 1/2
-                       ))]
+                         (if (< (rand) 1/2) ;; no double mutation, use normal mutate
+                           (mutate genome1 add-rate delete-rate) ;; mutate genome1 if > 1/20 and then < 1/2
+                           (mutate genome2 add-rate delete-rate))) ;; mutate genome2 if > /120 and then > 1/2
+                       (if (< (rand) 1/2) ;;mutation will not happen
+                         genome1 ;;if no crossover, no mutate, no double mutate return genome1 as new genome if < 1/2
+                         genome2));;if no crossover, no mutate, no double mutate return genome2 as new genome if > 1/2
+                       )]
     {:genome         new-genome
      :error          (error new-genome test-pairs)
      :lexicase-error 0}))
@@ -255,9 +255,9 @@
                                       (count population)))
               :best-genome  (:genome current-best)})))
 
-(defn gp-main [population-size generations test-pairs elitism add-rate delete-rate mutate? crossover? double_mutate? select-type]
+(defn gp-main [population-size generations test-pairs elitism add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate]
   "Runs genetic programming to solve, or approximately solve, a
-  symbolic regression problem in the context of the given population-size,
+  sequence problem in the context of the given population-size,
   number of generations to run, and test-pairs.
   This version of gp has mutate and crossover as conditionals."
   (loop [population (repeatedly population-size
@@ -269,11 +269,11 @@
       (best population)
       (if elitism
         (recur (conj (repeatedly (dec population-size)
-                                 #(make-child population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type))
+                                 #(make-child population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate))
                      (best population))
                (inc generation))
         (recur (repeatedly population-size
-                           #(make-child population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type))
+                           #(make-child population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate))
                (inc generation))))))
 
 (def testseq
