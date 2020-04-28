@@ -162,11 +162,12 @@
   (loop [candidates (population)
          cases (shuffle test-pairs)]
       (let [lexicase-candidates (map #(generate-candidate % (first cases)) candidates) ;;need to add the test case error to each candidate
-            min-error (apply min (map :lexicase-error lexicase-candidates))] ;;just apply min the smallest of the test case errors
-        (if (or (= (count candidates) 1)
+            min-error (apply min (map :lexicase-error lexicase-candidates))
+            best-candidates (filter #(= min-error (:lexicase-error %)) lexicase-candidates)] ;;just apply min the smallest of the test case errors
+        (if (or (= (count best-candidates) 1)
                 (= (count cases) 1))
-          (rand-nth candidates)                                 ;;in either case, pick a random candidate or it will return the only element in candidate
-          (recur (filter #(= min-error (:lexicase-error %)) lexicase-candidates) (rest cases)) ;;filters out candidates with greater error than the min error
+          (rand-nth best-candidates)                                 ;;in either case, pick a random candidate or it will return the only element in candidate
+          (recur best-candidates (rest cases)) ;;filters out candidates with greater error than the min error
           ))))
 
 (defn select [population type test-pairs]
