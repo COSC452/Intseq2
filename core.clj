@@ -248,6 +248,7 @@
               :best-error   (:error current-best)
               :diversity    (float (/ (count (distinct population))
                                       (count population)))
+              :population-size (count population)
               :average-size (float (/ (->> population
                                            (map :genome)
                                            (map count)
