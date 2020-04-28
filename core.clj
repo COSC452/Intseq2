@@ -207,7 +207,7 @@
     (vec (concat (take crossover-point genome1)
                  (drop crossover-point genome2)))))
 
-(defn make-child [population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate]
+(defn make-child [population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate]
   "Returns a new, evaluated child, produced by mutating the result
   of crossing over parents that are selected from the given population."
   (let [genome1 (:genome (select population select-type test-pairs))
@@ -216,14 +216,14 @@
         new-genome (if crossover? ;;if crossover
                      (if (and mutate? (< (rand) base-mutate-rate))  ;;if crossover, determine if we should mutate
                        (if double_mutate? ;;if double mutation
-                         (if (< (rand) 1/20) ;; if crossover and double mutation (no mutation)
+                         (if (< (rand) double-rate) ;; if crossover and double mutation (no mutation)
                            (mutate2 crossover12) ;;new genome is crossover+mutated if < 1/2
                            (mutate crossover12 add-rate delete-rate)) ;;new genome is crossover+mutated2 if > 1/2
                          (mutate crossover12 add-rate delete-rate)) ;;new genome is just crossover and normal mutate
                        crossover12)
                      (if (and mutate? (< (rand) base-mutate-rate)) ;; if no crossover, determine if we should mutate
                        (if double_mutate? ;; mutation will happen, determine if we will double mutate
-                         (if (< (rand) 1/20) ;; double mutation here based on chance
+                         (if (< (rand) double-rate) ;; double mutation here based on chance
                            (if (< (rand) 1/2)
                              (mutate2 genome1) ;; mutate2 genome1 if < 1/20 and then < 1/2
                              (mutate2 genome2)) ;; mutate2 genome2 if < 1/20 and the > 1/2
@@ -256,7 +256,7 @@
                                       (count population)))
               :best-genome  (:genome current-best)})))
 
-(defn gp-main [population-size generations test-pairs elitism add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate]
+(defn gp-main [population-size generations test-pairs elitism add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate]
   "Runs genetic programming to solve, or approximately solve, a
   sequence problem in the context of the given population-size,
   number of generations to run, and test-pairs.
@@ -270,11 +270,11 @@
       (best population)
       (if elitism
         (recur (conj (repeatedly (dec population-size)
-                                 #(make-child population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate))
+                                 #(make-child population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate))
                      (best population))
                (inc generation))
         (recur (repeatedly population-size
-                           #(make-child population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate))
+                           #(make-child population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate))
                (inc generation))))))
 
 (def testseq
