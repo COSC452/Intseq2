@@ -174,9 +174,9 @@
               i2))
           individuals))
 
-(defn tournament-select [population]
+(defn tournament-select [population size]
   "Returns an individual selected from population using a tournament."
-  (best (repeatedly 20 #(rand-nth population))))
+  (best (repeatedly size #(rand-nth population))))
 
 (defn set-lexicase-error [candidate case]
   (let [input (first case)
@@ -196,9 +196,9 @@
           (recur best-candidates (rest cases)) ;;filters out candidates with greater error than the min error
           ))))
 
-(defn select [population type test-pairs]
+(defn select [population type test-pairs size]
   (case type
-    :tournament (tournament-select population)
+    :tournament (tournament-select population size)
     :lexicase (lexicase-select population test-pairs)
     )
   )
@@ -234,11 +234,11 @@
     (vec (concat (take crossover-point genome1)
                  (drop crossover-point genome2)))))
 
-(defn make-child [population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate]
+(defn make-child [population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate tournament-size]
   "Returns a new, evaluated child, produced by mutating the result
   of crossing over parents that are selected from the given population."
-  (let [genome1 (:genome (select population select-type test-pairs))
-        genome2 (:genome (select population select-type test-pairs))
+  (let [genome1 (:genome (select population select-type test-pairs tournament-size))
+        genome2 (:genome (select population select-type test-pairs tournament-size))
         crossover12 (crossover genome1 genome2)
         new-genome (if crossover? ;;if crossover
                      (if (and mutate? (< (rand) base-mutate-rate))  ;;if crossover, determine if we should mutate
@@ -283,7 +283,7 @@
                                       (count population)))
               :best-genome  (:genome current-best)})))
 
-(defn gp-main [population-size generations test-pairs elitism add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate]
+(defn gp-main [population-size generations test-pairs elitism add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate tournament-size]
   "Runs genetic programming to solve, or approximately solve, a
   sequence problem in the context of the given population-size,
   number of generations to run, and test-pairs.
@@ -297,11 +297,11 @@
       (best population)
       (if elitism
         (recur (conj (repeatedly (dec population-size)
-                                 #(make-child population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate))
+                                 #(make-child population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate tournament-size))
                      (best population))
                (inc generation))
         (recur (repeatedly population-size
-                           #(make-child population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate))
+                           #(make-child population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate tournament-size))
                (inc generation))))))
 
 (def testseq
