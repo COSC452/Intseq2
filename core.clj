@@ -3,18 +3,27 @@
   (:require [clojure.math.numeric-tower :as maths]))
 
 ;; Code for finding formulas for unknown integer sequences (Numbers 2).
-;; Lee Spector (lspector@amherst.edu) 20200219
+;; By: Lee Jiaen, Scott Song, Conrad Kuklinsky, and Yushu Jiang
 
 ;; The top-level call function, gp, takes:
-
 ;; population-size = the number of individuals in the population
 ;; generations = the number of generations for which it will run evolution
 ;; test-pairs = list of the form ((input output)(input output) ...)
+;;
 
 ;; We will represent an individual as a map with these keys:
-
 ;; :genome = a vector of instructions and/or constants
 ;; :error = total error across test-pairs
+;; :lexicase-error = error for lexicase selection
+;; elitism = true or false for elitism
+;; add-rate = add rate for UMAD mutation
+;; delete-rate = delete rate for UMAD mutation
+;; mutate? = true or false for mutation to occur with mutate
+;; crossover? = true or false for crossover at one point to occurr
+;; double_mutate? = true or false for mutation to occur with mutate or mutate2 (mutate2 1 every 20 times)
+;; select-type = dictates if program does tournament or lexicase selection
+;; base-mutate-rate = so that the program does not mutate every time even if mutate is true
+;; double-rate = so that the program does not mutate every time even if double mutate is true
 
 ;; Programs are evaluated on a stack machine as follows:
 ;; - Constants are pushed on the stack
@@ -23,6 +32,7 @@
 
 (def ingredients '(+ - * / x 1 0))
 
+;;returns n!
 (defn factorial [n] (reduce *' (range 1 (inc n))))
 
 ;;returns x^y
@@ -52,8 +62,15 @@
         (biginteger ceiling)
         nil))))
 
-(discdiv 10 2)
+#_(discdiv 10 2)
 
+;; In the following test the program multiplies x by 5.0. For the input 2.0 this will produce
+;; 10.0, which is exactly what's specified, so the error for that will be 0. For the second
+;; input, 3.0, this will produce 15.0, which will have an error of 1.0 since the specified
+;; correct answer is 16.0. For the third input, -0.5, it will produce -2.5, which will have
+;; an error of 0.5. So the total error should be 1.5.
+#_(error '[5.0 x *]
+         '((2.0 10.0) (3.0 16.0) (-0.5 -3.0)))
 
 (defn error [genome test-pairs]
   "Returns the error of genome in the context of test-pairs."
@@ -145,22 +162,16 @@
   "Returns the error of genome in the context of a single pair."
   (error genome (list (list input output))))
 
-;; In the following test the program multiplies x by 5.0. For the input 2.0 this will produce
-;; 10.0, which is exactly what's specified, so the error for that will be 0. For the second
-;; input, 3.0, this will produce 15.0, which will have an error of 1.0 since the specified
-;; correct answer is 16.0. For the third input, -0.5, it will produce -2.5, which will have
-;; an error of 0.5. So the total error should be 1.5.
-#_(error '[5.0 x *]
-         '((2.0 10.0) (3.0 16.0) (-0.5 -3.0)))
-
-;;added by lee
-;;creates a random formula, we can change ingredients later
+;; Made it so that the variable x has a higher chance of being in the
+;  formula when the individual is first made because most
+;  operations need at least two things on the stack
 (defn new-formula [max-depth]
+  "Creates a new formula of a certain depth."
   (vec (repeatedly max-depth #(if (< (rand) 0.67)
                                 (first '(x)) (rand-nth ingredients)))))
-;;added by lee
-;;creates individual with formula and error key
+
 (defn new-individual [test-pairs]
+  "Creates individual with genome, genome error, and lexicase-error keys"
   (let [form (new-formula 5)]
     {:genome         form
      :error          (error form test-pairs)
@@ -175,7 +186,7 @@
           individuals))
 
 (defn tournament-select [population]
-  "Returns an individual selected from population using a tournament."
+  "Returns an individual selected from population using a tournament of size 20."
   (best (repeatedly 20 #(rand-nth population))))
 
 (defn generate-candidate [candidate case]
@@ -184,7 +195,7 @@
     (assoc candidate :lexicase-error (individual-error (:genome candidate) input output))))
 
 (defn lexicase-select [population test-pairs]
-  "Returns an individual selected from population using lexicase selection"
+  "Returns an individual selected from population using lexicase selection."
   (loop [candidates (population)
          cases (shuffle test-pairs)]
       (let [lexicase-candidates (map #(generate-candidate % (first cases)) candidates) ;;need to add the test case error to each candidate
@@ -197,6 +208,7 @@
           ))))
 
 (defn select [population type test-pairs]
+  "Dictates what selection type the program does for the program based on the cases."
   (case type
     :tournament (tournament-select population)
     :lexicase (lexicase-select population test-pairs)
@@ -215,8 +227,8 @@
                                     g)))]
     (vec with-deletions)))
 
-;;Mutate 2 allows for a greater change/chance of mutation
 (defn mutate2 [genome]
+  "Mutate 2 allows for a greater change/chance of mutation."
   (let [with-additions (flatten (for [g genome]
                                   (if (< (rand) 1/4)
                                     (shuffle (list g (rand-nth ingredients)))
@@ -228,15 +240,14 @@
     (vec with-deletions)))
 
 (defn crossover [genome1 genome2]
-  "Returns a one-point crossover product of genome1 and genome2."
+  "Returns a random one-point crossover product of genome1 and genome2."
   (let [crossover-point (rand-int (inc (min (count genome1)
                                             (count genome2))))]
     (vec (concat (take crossover-point genome1)
                  (drop crossover-point genome2)))))
 
 (defn make-child [population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate]
-  "Returns a new, evaluated child, produced by mutating the result
-  of crossing over parents that are selected from the given population."
+  "Returns a new, evaluated child, produced by a given mutation and selection combination."
   (let [genome1 (:genome (select population select-type test-pairs))
         genome2 (:genome (select population select-type test-pairs))
         crossover12 (crossover genome1 genome2)
@@ -286,8 +297,9 @@
 (defn gp-main [population-size generations test-pairs elitism add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate]
   "Runs genetic programming to solve, or approximately solve, a
   sequence problem in the context of the given population-size,
-  number of generations to run, and test-pairs.
-  This version of gp has mutate and crossover as conditionals."
+  number of generations to run, test-pairs, specified mutation and
+  selection combination, and addition and deletion rates. This version
+  of gp has mutate, double mutate, and crossover as conditionals."
   (loop [population (repeatedly population-size
                                 #(new-individual test-pairs))
          generation 0]
@@ -331,14 +343,13 @@
 
 ;;These are set to have population of 200, max 100 gen, crossover, mutation with a 1/10 addition rate
 ;;and 1/11 deletion rate, and tournament selection
-#_(gp-main 200 100 testseq true 1/10 1/11 true true false :tournament)
-#_(gp-main 200 100 simple-regression-data true 1/10 1/11 true true false :tournament)
-#_(gp-main 200 100 polynomial true 1/10 1/11 true true false :tournament)
-#_(gp-main 200 100 polynomial2 true 1/10 1/11 true true false :tournament)
-#_(gp-main 200 100 polynomial3  true 1/10 1/11 true true false :tournament)
+#_(gp-main 200 100 testseq true 1/10 1/11 true true false :tournament 8/10 8/10)
+#_(gp-main 200 100 simple-regression-data true 1/10 1/11 true true false :tournament 8/10 8/10)
+#_(gp-main 200 100 polynomial true 1/10 1/11 true true false :tournament 8/10 8/10)
+#_(gp-main 200 100 polynomial2 true 1/10 1/11 true true false :tournament 8/10 8/10)
+#_(gp-main 200 100 polynomial3  true 1/10 1/11 true true false :tournament 8/10 8/10)
 
-;;added by lee
-(defn gp_error [population-size generations test-pairs elitism add-rate delete-rate mutate? crossover? double_mutate? select-type]
+(defn gp_error [population-size generations test-pairs elitism add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate]
   (loop [population (repeatedly population-size
                                 #(new-individual test-pairs))
          generation 0]
@@ -347,26 +358,26 @@
       (best population)
       (if elitism
         (recur (conj (repeatedly (dec population-size)
-                                 #(make-child population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type))
+                                 #(make-child population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate))
                      (best population))
                (inc generation))
         (recur (repeatedly population-size
-                           #(make-child population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type))
+                           #(make-child population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate))
                (inc generation))))))
 
-(defn average_error [population-size generations test_seq elitism add-rate delete-rate mutate crossover double_mutate selection-type]
+(defn average_error [population-size generations test_seq elitism add-rate delete-rate mutate crossover double_mutate selection-type base-mutate-rate double-rate]
   (loop [sum 0 run 0]
     (if (>= run 100)
       (println (/ sum 100))
-      (recur (+ (:error(gp_error population-size generations test_seq elitism add-rate delete-rate mutate crossover double_mutate selection-type)) sum) (inc run)))))
+      (recur (+ (:error(gp_error population-size generations test_seq elitism add-rate delete-rate mutate crossover double_mutate selection-type base-mutate-rate double-rate)) sum) (inc run)))))
 
-#_(average_error 200 100 testseq true 1/10 1/11 true true false :tournament)
-#_(average_error 200 100 simple-regression-data true 1/10 1/11 true true false :tournament)
-#_(average_error 200 100 polynomial true 1/10 1/11 true true false :tournament)
-#_(average_error 200 100 polynomial2 true 1/10 1/11 true true false :tournament)
-#_(average_error 200 100 polynomial3  true 1/10 1/11 true true false :tournament)
+#_(average_error 200 100 testseq true 1/10 1/11 true true false :tournament 8/10 8/10)
+#_(average_error 200 100 simple-regression-data true 1/10 1/11 true true false :tournament 8/10 8/10)
+#_(average_error 200 100 polynomial true 1/10 1/11 true true false :tournament 8/10 8/10)
+#_(average_error 200 100 polynomial2 true 1/10 1/11 true true false :tournament 8/10 8/10)
+#_(average_error 200 100 polynomial3  true 1/10 1/11 true true false :tournament 8/10 8/10)
 
-(defn gp_gen [population-size generations test-pairs elitism add-rate delete-rate mutate? crossover? double_mutate? select-type]
+(defn gp_gen [population-size generations test-pairs elitism add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate]
   (loop [population (repeatedly population-size
                                 #(new-individual test-pairs))
          generation 0]
@@ -375,29 +386,34 @@
       (best population)
       (if elitism
         (recur (conj (repeatedly (dec population-size)
-                                 #(make-child population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type))
+                                 #(make-child population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate))
                      (best population))
                (inc generation))
         (recur (repeatedly population-size
-                           #(make-child population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type))
+                           #(make-child population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate))
                (inc generation))))))
 
-(defn average_gen [population-size generations test_seq elitism add-rate delete-rate mutate crossover double_mutate selection-type]
+(defn average_gen [population-size generations test_seq elitism add-rate delete-rate mutate crossover double_mutate selection-type base-mutate-rate double-rate]
   (loop [sum 0 run 0]
     (if (>= run 100)
       (println (/ sum 100))
-      (recur (+ (gp_gen population-size generations test_seq elitism add-rate delete-rate mutate crossover double_mutate selection-type) sum) (inc run)))))
+      (recur (+ (gp_gen population-size generations test_seq elitism add-rate delete-rate mutate crossover double_mutate selection-type base-mutate-rate double-rate) sum) (inc run)))))
 
-#_(average_gen 200 100 testseq true 1/10 1/11 true true false :tournament)
-#_(average_gen 200 100 simple-regression-data true 1/10 1/11 true true false :tournament)
-#_(average_gen 200 100 polynomial true 1/10 1/11 true true false :tournament)
-#_(average_gen 200 100 polynomial2 true 1/10 1/11 true true false :tournament)
-#_(average_gen 200 100 polynomial3  true 1/10 1/11 true true false :tournament)
-
-
+#_(average_gen 200 100 testseq true 1/10 1/11 true true false :tournament 8/10 8/10)
+#_(average_gen 200 100 simple-regression-data true 1/10 1/11 true true false :tournament 8/10 8/10)
+#_(average_gen 200 100 polynomial true 1/10 1/11 true true false :tournament 8/10 8/10)
+#_(average_gen 200 100 polynomial2 true 1/10 1/11 true true false :tournament 8/10 8/10)
+#_(average_gen 200 100 polynomial3  true 1/10 1/11 true true false :tournament 8/10 8/10)
 
 
-;;This is based on cases. Not sure if we are using it anymore. Didn't want to accidently delete.
+;;The code below is based on different combinations of mutation and selection as cases. No longer using this.
+
+;;[n] represents different combination of selection and mutation methods
+;; n=-1 uses UMAD, UMAD2, crossover, tournament
+;; n=1 uses UMAD, crossover, tournament
+;; n=2 uses crossover, tournament (this combination always fails)
+;; n=3 uses UMAD, tournament
+;; n=-3 uses UMAD, UMAD2, tournamnet
 
 ;;UMAD + UMAD2 + CROSSOVER + Tournament
 (defn make-child_neg1 [population test-pairs add-rate delete-rate]
@@ -447,13 +463,6 @@
     {:genome new-genome
      :error  (error new-genome test-pairs)}))
 
-;;[n] represents different combination of selection and mutation methods
-;; n=-1 uses UMAD, UMAD2, crossover, tournament
-;; n=1 uses UMAD, crossover, tournament
-;; n=2 uses crossover, tournament (this combination always fails)
-;; n=3 uses UMAD, tournament
-;; n=-3 uses UMAD, UMAD2, tournamnet
-;;NEEDS to build a boolean tree later
 (defn gp [population-size generations test-pairs elitism add-rate delete-rate n]
   (loop [population (repeatedly population-size
                                 #(new-individual test-pairs))
