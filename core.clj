@@ -152,7 +152,7 @@
   "Returns an individual selected from population using a tournament."
   (best (repeatedly 20 #(rand-nth population))))
 
-(defn generate-candidate [candidate case]
+(defn set-lexicase-error [candidate case]
   (let [input (first case)
         output (second case)]
     (assoc candidate :lexicase-error (individual-error (:genome candidate) input output))))
@@ -161,7 +161,7 @@
   "Returns an individual selected from population using lexicase selection"
   (loop [candidates (population)
          cases (shuffle test-pairs)]
-      (let [lexicase-candidates (map #(generate-candidate % (first cases)) candidates) ;;need to add the test case error to each candidate
+      (let [lexicase-candidates (map #(set-lexicase-error % (first cases)) candidates) ;;need to add the test case error to each candidate
             min-error (apply min (map :lexicase-error lexicase-candidates))
             best-candidates (filter #(= min-error (:lexicase-error %)) lexicase-candidates)] ;;just apply min the smallest of the test case errors
         (if (or (= (count best-candidates) 1)
