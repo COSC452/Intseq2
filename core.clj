@@ -10,16 +10,18 @@
 ;; population-size = the number of individuals in the population
 ;; generations = the number of generations for which it will run evolution
 ;; test-pairs = list of the form ((input output)(input output) ...)
+;; name = string for file name
 ;; elitism = true or false for elitism
-;;; add-rate = add rate for UMAD mutation
-;;; delete-rate = delete rate for UMAD mutation
-;;; mutate? = true or false for mutation to occur with mutate
-;;; crossover? = true or false for crossover at one point to occurr
-;;; double_mutate? = true or false for mutation to occur with mutate or mutate2 (mutate2 1 every 20 times)
-;;; select-type = dictates if program does tournament or lexicase selection
-;;; base-mutate-rate = so that the program does not mutate every time even if mutate is true
-;;; double-rate = so that the program does not mutate every time even if double mutate is true
-;;; tournament-size = size of each tournament for tournament selection
+;; add-rate = add rate for UMAD mutation
+;; delete-rate = delete rate for UMAD mutation
+;; mutate? = true or false for mutation to occur with mutate
+;; crossover? = true or false for crossover at one point to occurr
+;; double_mutate? = true or false for mutation to occur with mutate or mutate2 (mutate2 1 every 20 times)
+;; select-type = dictates if program does tournament or lexicase selection
+;; base-mutate-rate = so that the program does not mutate every time even if mutate is true
+;; double-rate = so that the program does not mutate every time even if double mutate is true
+;; tournament-size = size of each tournament for tournament selection
+;; export-output = if we want a txt output of the last generation
 
 ;; We will represent an individual as a map with these keys:
 ;; :genome = a vector of instructions and/or constants
@@ -353,8 +355,8 @@
 ;;and 1/11 deletion rate, and tournament selection
 #_(gp-main 200 100 testseq "testseq" true 1/10 1/11 true true false :tournament 8/10 8/10 10 true)
 #_(gp-main 200 100 simple-regression-data "simple-regression-data" true 1/10 1/11 true true false :tournament 8/10 8/10 10 true)
-#_(gp-main 200 100 polynomial true 1/10 1/11 true true false :tournament 8/10 8/10 10 true)
-#_(gp-main 200 100 polynomial2 true 1/10 1/11 true true false :tournament 8/10 8/10 10 true)
+#_(gp-main 200 100 polynomial "polynomial" true 1/10 1/11 true true false :tournament 8/10 8/10 10 true)
+#_(gp-main 200 100 polynomial2 "polynomial2" true 1/10 1/11 true true false :tournament 8/10 8/10 10 true)
 #_(gp-main 200 100 polynomial3 "polynomial3" true 1/10 1/11 true true false :tournament 8/10 8/10 10 true)
 
 
