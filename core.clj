@@ -1,6 +1,7 @@
 (ns intseq2.core
   (:require [clojure.math.combinatorics :as com])
-  (:require [clojure.math.numeric-tower :as maths]))
+  (:require [clojure.math.numeric-tower :as maths])
+  (:require [clojure.java.io :as io]))
 
 ;; Code for finding formulas for unknown integer sequences (Numbers 2).
 ;; By: Lee Jiaen, Scott Song, Conrad Kuklinsky, and Yushu Jiang
@@ -32,37 +33,44 @@
 
 (def ingredients '(+ - * / x 1 0))
 
-;;returns n!
-(defn factorial [n] (reduce *' (range 1 (inc n))))
+(defn factorial [n] (bigint (reduce *' (range 1 (inc n)))))
 
 ;;returns x^y
 (defn pow [x y]
-  (reduce * (repeat y x)))
+  (bigint (reduce * (repeat y x))))
 
-;;solves g^x = y
-(defn disclog [base target]
+;;solves g^x = y for x
+(defn discretelog [base target]
   (let [exp (/ (Math/log target) (Math/log base))
         floor (Math/floor exp)
         ceiling (Math/ceil exp)]
         (if (= (pow base floor) target)
-          (biginteger floor)
+          (bigint floor)
           (if (= (pow base ceiling) target)
-            (biginteger ceiling)
+            (bigint ceiling)
             nil))))
 
-(defn discdiv [x divisor]
+;;returns quotient only if the quotient is an integer value
+(defn discretedivide [x divisor]
   (let [quotient (/ x divisor)
-        floor (Math/floor quotient)
-        ceiling (Math/ceil quotient)]
-    (print floor)
-    (print ceiling)
+        floor (bigint (Math/floor quotient))
+        ceiling (bigint (Math/ceil quotient))]
     (if (= (* floor divisor) x)
-      (biginteger floor)
+      floor
       (if (= (* ceiling divisor) x)
-        (biginteger ceiling)
+        ceiling
         nil))))
 
-#_(discdiv 10 2)
+(defn discretesqrt [x]
+  (let [sqrt (maths/sqrt x)
+    floor (bigint (Math/floor sqrt))
+    ceiling (bigint (Math/ceil sqrt))]
+    (if (= (* floor floor) x)
+      floor
+      (if (= (* ceiling ceiling) x)
+        ceiling
+        nil))))
+
 
 ;; In the following test the program multiplies x by 5.0. For the input 2.0 this will produce
 ;; 10.0, which is exactly what's specified, so the error for that will be 0. For the second
@@ -72,11 +80,12 @@
 #_(error '[5.0 x *]
          '((2.0 10.0) (3.0 16.0) (-0.5 -3.0)))
 
+
 (defn error [genome test-pairs]
   "Returns the error of genome in the context of test-pairs."
   (reduce + (for [pair test-pairs]
-              (let [input (first pair)
-                    output (second pair)]
+              (let [input (biginteger (first pair))
+                    output (biginteger (second pair))]
                 (loop [program genome
                        stack ()]
                   ;;(println "Program:" program "Stack:" stack)
@@ -105,56 +114,46 @@
                              / (if (or (< (count stack) 2)
                                        (zero? (first stack)))
                                  stack
-                                 (cons (long (/ (second stack) (first stack)))
-                                       (rest (rest stack))))
-                             sin (if (< (count stack) 1)
-                                   stack
-                                   (cons (long (Math/sin (first stack)))
-                                         (rest stack)))
-                             cos (if (< (count stack) 1)
-                                   stack
-                                   (cons (long (Math/cos (first stack)))
-                                         (rest stack)))
+                                 (let [quotient (discretedivide (second stack) (first stack))]
+                                   (if (= quotient nil)
+                                     stack
+                                     (cons quotient (rest (rest stack))))))
                              ! (if (< (count stack) 1)
                                  stack
                                  (cons (factorial (first stack))
                                        (rest stack)))
-                             tan (if (< (count stack) 1)
-                                   stack
-                                   (cons (long (Math/tan (first stack)))
-                                         (rest stack)))
                              log (if (< (count stack) 1)
                                    stack
-                                   (cons (long (Math/log (first stack)))
-                                         (rest stack)))
+                                   (let [exponent (discretelog (second stack) (first stack))]
+                                     (if (= exponent nil)
+                                       stack
+                                       (cons exponent (rest(rest stack))))))
                              x (cons input stack)
-                             expt (if (< (count stack) 2)
-                                    stack
-                                    (cons (long (maths/expt (first stack) (second stack)))
-                                          (rest (rest stack))))
                              mod (if (or (< (count stack) 2) (zero? (second stack)))
                                    stack
                                    (cons (long (mod (first stack) (second stack)))
                                          (rest (rest stack))))
                              sqrt (if (< (count stack) 1)
                                     stack
-                                    (cons (long (maths/sqrt (first stack)))
-                                          (rest stack)))
+                                    (let [root (discretesqrt (first stack))]
+                                      (if (= root nil)
+                                        stack
+                                        (cons root (rest stack)))))
                              gcd (if (< (count stack) 2)
                                    stack
-                                   (cons (maths/gcd (second stack) (first stack))
+                                   (cons (bigint (maths/gcd (second stack) (first stack)))
                                          (rest (rest stack))))
                              lcm (if (< (count stack) 2)
                                    stack
-                                   (cons (maths/gcd (second stack) (first stack))
+                                   (cons (bigint (maths/gcd (second stack) (first stack)))
                                          (rest (rest stack))))
                              per (if (< (count stack) 1)
                                    stack
-                                   (cons (com/count-permutations (range (first stack)))
+                                   (cons (bigint (com/count-permutations (range (first stack))))
                                          (rest stack)))
                              comb (if (< (count stack) 2)
                                     stack
-                                    (cons (com/count-combinations (range (first stack)) (second stack))
+                                    (cons (bigint (com/count-combinations (range (first stack)) (second stack)))
                                           (rest stack)))
                              (cons (first program) stack)))))))))
 
@@ -294,7 +293,7 @@
                                       (count population)))
               :best-genome  (:genome current-best)})))
 
-(defn gp-main [population-size generations test-pairs elitism add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate tournament-size]
+(defn gp-main [population-size generations test-pairs name elitism add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate tournament-size export-output]
   "Runs genetic programming to solve, or approximately solve, a
   sequence problem in the context of the given population-size,
   number of generations to run, test-pairs, specified mutation and
@@ -306,17 +305,15 @@
     (report generation population)
     (if (or (< (:error (best population)) 0.1)
             (>= generation generations))
-      (spit "result.txt" (str   'test-pairs "\n" ;;needs to change into the test-pairs name
-                                :elitism " " elitism "\n"
-                                :add-rate ":" add-rate " " :delete-rate ":" delete-rate "\n"
-                                :mutate " " mutate? " ":base-mutate-rate ":" base-mutate-rate "\n"
-                                :crossover " " crossover? "\n"
-                                :double_mutate " " double_mutate? " " :double-rate ":" double-rate "\n"
-                                :selection-type " " select-type "\n"
-                                :tournament-size " " tournament-size "\n"
-                                :generation " " generation "\n"
-                                (best population) "\n"
-                                "\n" ) :append true)
+        (if export-output
+          (let [filename (str name "_" population-size "_" generations "_" elitism
+                              "_" (float add-rate) "_" (float delete-rate) "_" mutate? "_" crossover? "_" double_mutate? "_" select-type
+                              "_" (float base-mutate-rate) "_" (float double-rate) "_" tournament-size ".txt")
+                filename2 (str name "_" population-size "_" generations "_" elitism
+                               "_" (float add-rate)  ".txt")]
+            (if (.exists (io/file filename))
+              (spit filename (str :generation " " generation " " (best population) "\n") :append true)
+              (spit filename (str :generation " " generation " " (best population) "\n" )))))
       (if elitism
         (recur (conj (repeatedly (dec population-size)
                                  #(make-child population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate tournament-size))
@@ -324,7 +321,8 @@
                (inc generation))
         (recur (repeatedly population-size
                            #(make-child population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate tournament-size))
-               (inc generation))))))
+               (inc generation)))))
+      )
 
 (def testseq
   (let [seq [1, 2, 3, 4, 5]
@@ -352,12 +350,13 @@
                             [x (+ 6 (+ (* x x) (pow x 5)))]))
 
 ;;These are set to have population of 200, max 100 gen, crossover, mutation with a 1/10 addition rate
-;;and 1/11 deletion rate, tournament selection, 4/5 mutation base rate for both mutate and double mutate, and tournament size
-#_(gp-main 200 100 testseq true 1/10 1/11 true true false :tournament 4/5 4/5 10)
-#_(gp-main 200 100 simple-regression-data true 1/10 1/11 true true false :tournament 4/5 4/5 10)
-#_(gp-main 200 100 polynomial true 1/10 1/11 true true false :tournament 4/5 4/5 10)
-#_(gp-main 200 100 polynomial2 true 1/10 1/11 true true false :tournament 4/5 4/5 10)
-#_(gp-main 200 100 polynomial3  true 1/10 1/11 true true false :tournament 4/5 4/5 10)
+;;and 1/11 deletion rate, and tournament selection
+#_(gp-main 200 100 testseq "testseq" true 1/10 1/11 true true false :tournament 8/10 8/10 10 true)
+#_(gp-main 200 100 simple-regression-data "simple-regression-data" true 1/10 1/11 true true false :tournament 8/10 8/10 10 true)
+#_(gp-main 200 100 polynomial true 1/10 1/11 true true false :tournament 8/10 8/10 10 true)
+#_(gp-main 200 100 polynomial2 true 1/10 1/11 true true false :tournament 8/10 8/10 10 true)
+#_(gp-main 200 100 polynomial3 "polynomial3" true 1/10 1/11 true true false :tournament 8/10 8/10 10 true)
+
 
 (defn gp_error [population-size generations test-pairs elitism add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate]
   (loop [population (repeatedly population-size
@@ -381,11 +380,11 @@
       (println (/ sum 100))
       (recur (+ (:error(gp_error population-size generations test_seq elitism add-rate delete-rate mutate crossover double_mutate selection-type base-mutate-rate double-rate)) sum) (inc run)))))
 
-#_(average_error 200 100 testseq true 1/10 1/11 true true false :tournament 4/5 4/5 10)
-#_(average_error 200 100 simple-regression-data true 1/10 1/11 true true false :tournament 4/5 4/5 10)
-#_(average_error 200 100 polynomial true 1/10 1/11 true true false :tournament 4/5 4/5 10)
-#_(average_error 200 100 polynomial2 true 1/10 1/11 true true false :tournament 4/5 4/5 10)
-#_(average_error 200 100 polynomial3  true 1/10 1/11 true true false :tournament 4/5 4/5 10)
+#_(average_error 200 100 testseq true 1/10 1/11 true true false :tournament 4/5 4/5 10 true)
+#_(average_error 200 100 simple-regression-data true 1/10 1/11 true true false :tournament 4/5 4/5 10 true)
+#_(average_error 200 100 polynomial true 1/10 1/11 true true false :tournament 4/5 4/5 10 true)
+#_(average_error 200 100 polynomial2 true 1/10 1/11 true true false :tournament 4/5 4/5 10 true)
+#_(average_error 200 100 polynomial3  true 1/10 1/11 true true false :tournament 4/5 4/5 10 true)
 
 (defn gp_gen [population-size generations test-pairs elitism add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate]
   (loop [population (repeatedly population-size
@@ -409,11 +408,11 @@
       (println (/ sum 100))
       (recur (+ (gp_gen population-size generations test_seq elitism add-rate delete-rate mutate crossover double_mutate selection-type base-mutate-rate double-rate) sum) (inc run)))))
 
-#_(average_gen 200 100 testseq true 1/10 1/11 true true false :tournament 4/5 4/5 10)
-#_(average_gen 200 100 simple-regression-data true 1/10 1/11 true true false :tournament 4/5 4/5 10)
-#_(average_gen 200 100 polynomial true 1/10 1/11 true true false :tournament 4/5 4/5 10)
-#_(average_gen 200 100 polynomial2 true 1/10 1/11 true true false :tournament 4/5 4/5 10)
-#_(average_gen 200 100 polynomial3  true 1/10 1/11 true true false :tournament 4/5 4/5 10)
+#_(average_gen 200 100 testseq true 1/10 1/11 true true false :tournament 4/5 4/5 10 true)
+#_(average_gen 200 100 simple-regression-data true 1/10 1/11 true true false :tournament 4/5 4/5 10 true)
+#_(average_gen 200 100 polynomial true 1/10 1/11 true true false :tournament 4/5 4/5 10 true)
+#_(average_gen 200 100 polynomial2 true 1/10 1/11 true true false :tournament 4/5 4/5 10 true)
+#_(average_gen 200 100 polynomial3  true 1/10 1/11 true true false :tournament 4/5 4/5 10 true)
 
 
 ;;The code below is based on different combinations of mutation and selection as cases. No longer using this.
