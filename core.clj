@@ -23,43 +23,49 @@
 
 (def ingredients '(+ - * / x 1 0))
 
-(defn factorial [n] (reduce *' (range 1 (inc n))))
+(defn factorial [n] (bigint (reduce *' (range 1 (inc n)))))
 
 ;;returns x^y
 (defn pow [x y]
-  (reduce * (repeat y x)))
+  (bigint (reduce * (repeat y x))))
 
-;;solves g^x = y
-(defn disclog [base target]
+;;solves g^x = y for x
+(defn discretelog [base target]
   (let [exp (/ (Math/log target) (Math/log base))
         floor (Math/floor exp)
         ceiling (Math/ceil exp)]
         (if (= (pow base floor) target)
-          (biginteger floor)
+          (bigint floor)
           (if (= (pow base ceiling) target)
-            (biginteger ceiling)
+            (bigint ceiling)
             nil))))
 
-(defn discdiv [x divisor]
+;;returns quotient only if the quotient is an integer value
+(defn discretedivide [x divisor]
   (let [quotient (/ x divisor)
-        floor (Math/floor quotient)
-        ceiling (Math/ceil quotient)]
-    (print floor)
-    (print ceiling)
+        floor (bigint (Math/floor quotient))
+        ceiling (bigint (Math/ceil quotient))]
     (if (= (* floor divisor) x)
-      (biginteger floor)
+      floor
       (if (= (* ceiling divisor) x)
-        (biginteger ceiling)
+        ceiling
         nil))))
 
-(discdiv 10 2)
-
+(defn discretesqrt [x]
+  (let [sqrt (maths/sqrt x)
+    floor (bigint (Math/floor sqrt))
+    ceiling (bigint (Math/ceil sqrt))]
+    (if (= (* floor floor) x)
+      floor
+      (if (= (* ceiling ceiling) x)
+        ceiling
+        nil))))
 
 (defn error [genome test-pairs]
   "Returns the error of genome in the context of test-pairs."
   (reduce + (for [pair test-pairs]
-              (let [input (first pair)
-                    output (second pair)]
+              (let [input (biginteger (first pair))
+                    output (biginteger (second pair))]
                 (loop [program genome
                        stack ()]
                   ;;(println "Program:" program "Stack:" stack)
@@ -88,56 +94,46 @@
                              / (if (or (< (count stack) 2)
                                        (zero? (first stack)))
                                  stack
-                                 (cons (long (/ (second stack) (first stack)))
-                                       (rest (rest stack))))
-                             sin (if (< (count stack) 1)
-                                   stack
-                                   (cons (long (Math/sin (first stack)))
-                                         (rest stack)))
-                             cos (if (< (count stack) 1)
-                                   stack
-                                   (cons (long (Math/cos (first stack)))
-                                         (rest stack)))
+                                 (let [quotient (discretedivide (second stack) (first stack))]
+                                   (if (= quotient nil)
+                                     stack
+                                     (cons quotient (rest (rest stack))))))
                              ! (if (< (count stack) 1)
                                  stack
                                  (cons (factorial (first stack))
                                        (rest stack)))
-                             tan (if (< (count stack) 1)
-                                   stack
-                                   (cons (long (Math/tan (first stack)))
-                                         (rest stack)))
                              log (if (< (count stack) 1)
                                    stack
-                                   (cons (long (Math/log (first stack)))
-                                         (rest stack)))
+                                   (let [exponent (discretelog (second stack) (first stack))]
+                                     (if (= exponent nil)
+                                       stack
+                                       (cons exponent (rest(rest stack))))))
                              x (cons input stack)
-                             expt (if (< (count stack) 2)
-                                    stack
-                                    (cons (long (maths/expt (first stack) (second stack)))
-                                          (rest (rest stack))))
                              mod (if (or (< (count stack) 2) (zero? (second stack)))
                                    stack
                                    (cons (long (mod (first stack) (second stack)))
                                          (rest (rest stack))))
                              sqrt (if (< (count stack) 1)
                                     stack
-                                    (cons (long (maths/sqrt (first stack)))
-                                          (rest stack)))
+                                    (let [root (discretesqrt (first stack))]
+                                      (if (= root nil)
+                                        stack
+                                        (cons root (rest stack)))))
                              gcd (if (< (count stack) 2)
                                    stack
-                                   (cons (maths/gcd (second stack) (first stack))
+                                   (cons (bigint (maths/gcd (second stack) (first stack)))
                                          (rest (rest stack))))
                              lcm (if (< (count stack) 2)
                                    stack
-                                   (cons (maths/gcd (second stack) (first stack))
+                                   (cons (bigint (maths/gcd (second stack) (first stack)))
                                          (rest (rest stack))))
                              per (if (< (count stack) 1)
                                    stack
-                                   (cons (com/count-permutations (range (first stack)))
+                                   (cons (bigint (com/count-permutations (range (first stack))))
                                          (rest stack)))
                              comb (if (< (count stack) 2)
                                     stack
-                                    (cons (com/count-combinations (range (first stack)) (second stack))
+                                    (cons (bigint (com/count-combinations (range (first stack)) (second stack)))
                                           (rest stack)))
                              (cons (first program) stack)))))))))
 
@@ -381,7 +377,7 @@
         (recur (repeatedly population-size
                            #(make-child population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type))
                (inc generation))))))
-
+a
 (defn average_gen [population-size generations test_seq elitism add-rate delete-rate mutate crossover double_mutate selection-type]
   (loop [sum 0 run 0]
     (if (>= run 100)
