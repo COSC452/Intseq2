@@ -9,21 +9,21 @@
 ;; population-size = the number of individuals in the population
 ;; generations = the number of generations for which it will run evolution
 ;; test-pairs = list of the form ((input output)(input output) ...)
-;;
+;; elitism = true or false for elitism
+;;; add-rate = add rate for UMAD mutation
+;;; delete-rate = delete rate for UMAD mutation
+;;; mutate? = true or false for mutation to occur with mutate
+;;; crossover? = true or false for crossover at one point to occurr
+;;; double_mutate? = true or false for mutation to occur with mutate or mutate2 (mutate2 1 every 20 times)
+;;; select-type = dictates if program does tournament or lexicase selection
+;;; base-mutate-rate = so that the program does not mutate every time even if mutate is true
+;;; double-rate = so that the program does not mutate every time even if double mutate is true
+;;; tournament-size = size of each tournament for tournament selection
 
 ;; We will represent an individual as a map with these keys:
 ;; :genome = a vector of instructions and/or constants
 ;; :error = total error across test-pairs
 ;; :lexicase-error = error for lexicase selection
-;; elitism = true or false for elitism
-;; add-rate = add rate for UMAD mutation
-;; delete-rate = delete rate for UMAD mutation
-;; mutate? = true or false for mutation to occur with mutate
-;; crossover? = true or false for crossover at one point to occurr
-;; double_mutate? = true or false for mutation to occur with mutate or mutate2 (mutate2 1 every 20 times)
-;; select-type = dictates if program does tournament or lexicase selection
-;; base-mutate-rate = so that the program does not mutate every time even if mutate is true
-;; double-rate = so that the program does not mutate every time even if double mutate is true
 
 ;; Programs are evaluated on a stack machine as follows:
 ;; - Constants are pushed on the stack
@@ -352,12 +352,12 @@
                             [x (+ 6 (+ (* x x) (pow x 5)))]))
 
 ;;These are set to have population of 200, max 100 gen, crossover, mutation with a 1/10 addition rate
-;;and 1/11 deletion rate, and tournament selection
-#_(gp-main 200 100 testseq true 1/10 1/11 true true false :tournament 8/10 8/10 10)
-#_(gp-main 200 100 simple-regression-data true 1/10 1/11 true true false :tournament 8/10 8/10 10)
-#_(gp-main 200 100 polynomial true 1/10 1/11 true true false :tournament 8/10 8/10)
-#_(gp-main 200 100 polynomial2 true 1/10 1/11 true true false :tournament 8/10 8/10 10)
-#_(gp-main 200 100 polynomial3  true 1/10 1/11 true true false :tournament 8/10 8/10 10)
+;;and 1/11 deletion rate, tournament selection, 4/5 mutation base rate for both mutate and double mutate, and tournament size
+#_(gp-main 200 100 testseq true 1/10 1/11 true true false :tournament 4/5 4/5 10)
+#_(gp-main 200 100 simple-regression-data true 1/10 1/11 true true false :tournament 4/5 4/5 10)
+#_(gp-main 200 100 polynomial true 1/10 1/11 true true false :tournament 4/5 4/5 10)
+#_(gp-main 200 100 polynomial2 true 1/10 1/11 true true false :tournament 4/5 4/5 10)
+#_(gp-main 200 100 polynomial3  true 1/10 1/11 true true false :tournament 4/5 4/5 10)
 
 (defn gp_error [population-size generations test-pairs elitism add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate]
   (loop [population (repeatedly population-size
@@ -381,11 +381,11 @@
       (println (/ sum 100))
       (recur (+ (:error(gp_error population-size generations test_seq elitism add-rate delete-rate mutate crossover double_mutate selection-type base-mutate-rate double-rate)) sum) (inc run)))))
 
-#_(average_error 200 100 testseq true 1/10 1/11 true true false :tournament 8/10 8/10)
-#_(average_error 200 100 simple-regression-data true 1/10 1/11 true true false :tournament 8/10 8/10)
-#_(average_error 200 100 polynomial true 1/10 1/11 true true false :tournament 8/10 8/10)
-#_(average_error 200 100 polynomial2 true 1/10 1/11 true true false :tournament 8/10 8/10)
-#_(average_error 200 100 polynomial3  true 1/10 1/11 true true false :tournament 8/10 8/10)
+#_(average_error 200 100 testseq true 1/10 1/11 true true false :tournament 4/5 4/5 10)
+#_(average_error 200 100 simple-regression-data true 1/10 1/11 true true false :tournament 4/5 4/5 10)
+#_(average_error 200 100 polynomial true 1/10 1/11 true true false :tournament 4/5 4/5 10)
+#_(average_error 200 100 polynomial2 true 1/10 1/11 true true false :tournament 4/5 4/5 10)
+#_(average_error 200 100 polynomial3  true 1/10 1/11 true true false :tournament 4/5 4/5 10)
 
 (defn gp_gen [population-size generations test-pairs elitism add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate]
   (loop [population (repeatedly population-size
@@ -409,11 +409,11 @@
       (println (/ sum 100))
       (recur (+ (gp_gen population-size generations test_seq elitism add-rate delete-rate mutate crossover double_mutate selection-type base-mutate-rate double-rate) sum) (inc run)))))
 
-#_(average_gen 200 100 testseq true 1/10 1/11 true true false :tournament 8/10 8/10)
-#_(average_gen 200 100 simple-regression-data true 1/10 1/11 true true false :tournament 8/10 8/10)
-#_(average_gen 200 100 polynomial true 1/10 1/11 true true false :tournament 8/10 8/10)
-#_(average_gen 200 100 polynomial2 true 1/10 1/11 true true false :tournament 8/10 8/10)
-#_(average_gen 200 100 polynomial3  true 1/10 1/11 true true false :tournament 8/10 8/10)
+#_(average_gen 200 100 testseq true 1/10 1/11 true true false :tournament 4/5 4/5 10)
+#_(average_gen 200 100 simple-regression-data true 1/10 1/11 true true false :tournament 4/5 4/5 10)
+#_(average_gen 200 100 polynomial true 1/10 1/11 true true false :tournament 4/5 4/5 10)
+#_(average_gen 200 100 polynomial2 true 1/10 1/11 true true false :tournament 4/5 4/5 10)
+#_(average_gen 200 100 polynomial3  true 1/10 1/11 true true false :tournament 4/5 4/5 10)
 
 
 ;;The code below is based on different combinations of mutation and selection as cases. No longer using this.
