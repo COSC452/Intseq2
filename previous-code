@@ -1,0 +1,142 @@
+
+
+(defn gp_error [population-size generations test-pairs elitism add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate]
+  (loop [population (repeatedly population-size
+                                #(new-individual test-pairs))
+         generation 0]
+    (if (or (< (:error (best population)) 0.1)
+            (>= generation generations))
+      (best population)
+      (if elitism
+        (recur (conj (repeatedly (dec population-size)
+                                 #(make-child population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate))
+                     (best population))
+               (inc generation))
+        (recur (repeatedly population-size
+                           #(make-child population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate))
+               (inc generation))))))
+
+(defn average_error [population-size generations test_seq elitism add-rate delete-rate mutate crossover double_mutate selection-type base-mutate-rate double-rate]
+  (loop [sum 0 run 0]
+    (if (>= run 100)
+      (println (/ sum 100))
+      (recur (+ (:error(gp_error population-size generations test_seq elitism add-rate delete-rate mutate crossover double_mutate selection-type base-mutate-rate double-rate)) sum) (inc run)))))
+
+#_(average_error 200 100 testseq true 1/10 1/11 true true false :tournament 4/5 4/5 10 true)
+#_(average_error 200 100 simple-regression-data true 1/10 1/11 true true false :tournament 4/5 4/5 10 true)
+#_(average_error 200 100 polynomial true 1/10 1/11 true true false :tournament 4/5 4/5 10 true)
+#_(average_error 200 100 polynomial2 true 1/10 1/11 true true false :tournament 4/5 4/5 10 true)
+#_(average_error 200 100 polynomial3  true 1/10 1/11 true true false :tournament 4/5 4/5 10 true)
+
+(defn gp_gen [population-size generations test-pairs elitism add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate]
+  (loop [population (repeatedly population-size
+                                #(new-individual test-pairs))
+         generation 0]
+    (if (or (< (:error (best population)) 0.1)
+            (>= generation generations))
+      (best population)
+      (if elitism
+        (recur (conj (repeatedly (dec population-size)
+                                 #(make-child population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate))
+                     (best population))
+               (inc generation))
+        (recur (repeatedly population-size
+                           #(make-child population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate))
+               (inc generation))))))
+
+(defn average_gen [population-size generations test_seq elitism add-rate delete-rate mutate crossover double_mutate selection-type base-mutate-rate double-rate]
+  (loop [sum 0 run 0]
+    (if (>= run 100)
+      (println (/ sum 100))
+      (recur (+ (gp_gen population-size generations test_seq elitism add-rate delete-rate mutate crossover double_mutate selection-type base-mutate-rate double-rate) sum) (inc run)))))
+
+#_(average_gen 200 100 testseq true 1/10 1/11 true true false :tournament 4/5 4/5 10 true)
+#_(average_gen 200 100 simple-regression-data true 1/10 1/11 true true false :tournament 4/5 4/5 10 true)
+#_(average_gen 200 100 polynomial true 1/10 1/11 true true false :tournament 4/5 4/5 10 true)
+#_(average_gen 200 100 polynomial2 true 1/10 1/11 true true false :tournament 4/5 4/5 10 true)
+#_(average_gen 200 100 polynomial3  true 1/10 1/11 true true false :tournament 4/5 4/5 10 true)
+
+
+;;The code below is based on different combinations of mutation and selection as cases. No longer using this.
+
+;;[n] represents different combination of selection and mutation methods
+;; n=-1 uses UMAD, UMAD2, crossover, tournament
+;; n=1 uses UMAD, crossover, tournament
+;; n=2 uses crossover, tournament (this combination always fails)
+;; n=3 uses UMAD, tournament
+;; n=-3 uses UMAD, UMAD2, tournamnet
+
+;;UMAD + UMAD2 + CROSSOVER + Tournament
+(defn make-child_neg1 [population test-pairs add-rate delete-rate]
+  "Returns a new, evaluated child, produced by mutating the result
+  of crossing over parents that are selected from the given population."
+  (let [new-genome (if (> (rand) 1/20)
+                     (mutate (crossover (:genome (select population))
+                                        (:genome (select population))) add-rate delete-rate)
+                     (mutate2 (crossover (:genome (select population))
+                                         (:genome (select population)))))]
+    {:genome new-genome
+     :error  (error new-genome test-pairs)}))
+
+;;UMAD + CROSSOVER + TOURNAMENT
+(defn make-child1 [population test-pairs add-rate delete-rate]
+  "Returns a new, evaluated child, produced by mutating the result
+  of crossing over parents that are selected from the given population."
+  (let [new-genome (mutate (crossover (:genome (select population))
+                                      (:genome (select population))) add-rate delete-rate)]
+    {:genome         new-genome
+     :error          (error new-genome test-pairs)
+     :lexicase-error 0}))
+
+;; CROSSOVER + TOURNAMENT
+(defn make-child2 [population test-pairs]
+  "Returns a new, evaluated child, produced by crossing over parents that are selected from the given population."
+  (let [new-genome (crossover (:genome (select population))
+                              (:genome (select population)))]
+    {:genome new-genome
+     :error  (error new-genome test-pairs)}))
+
+;;UMAD + TOURNAMENT
+(defn make-child3 [population test-pairs add-rate delete-rate]
+  "Returns a new, evaluated child, produced by mutating the result
+  of parents that are selected from the given population."
+  (let [new-genome (mutate (:genome (select population)) add-rate delete-rate)]
+    {:genome new-genome
+     :error  (error new-genome test-pairs)}))
+
+;;UMAD + UMAD2 + TOURNAMENT
+(defn make-child_neg3 [population test-pairs add-rate delete-rate]
+  "Returns a new, evaluated child, produced by mutating the result
+  of crossing over parents that are selected from the given population."
+  (let [new-genome (if (> (rand) 1/20)
+                     (mutate (:genome (select population)) add-rate delete-rate)
+                     (mutate2 (:genome (select population))))]
+    {:genome new-genome
+     :error  (error new-genome test-pairs)}))
+
+(defn gp [population-size generations test-pairs elitism add-rate delete-rate n]
+  (loop [population (repeatedly population-size
+                                #(new-individual test-pairs))
+         generation 0]
+    (report generation population)
+    (if (or (< (:error (best population)) 0.1)
+            (>= generation generations))
+      (best population)
+      (if elitism
+        (recur (conj (repeatedly (dec population-size)
+                                 (case n
+                                   -1 #(make-child_neg1 population test-pairs add-rate delete-rate)
+                                   1 #(make-child1 population test-pairs add-rate delete-rate)
+                                   2 #(make-child2 population test-pairs)
+                                   3 #(make-child3 population test-pairs add-rate delete-rate)
+                                   -3 #(make-child_neg3 population test-pairs add-rate delete-rate)))
+                     (best population))
+               (inc generation))
+        (recur (repeatedly population-size
+                           (case n
+                             -1 #(make-child_neg1 population test-pairs add-rate delete-rate)
+                             1 #(make-child1 population test-pairs add-rate delete-rate)
+                             2 #(make-child2 population test-pairs)
+                             3 #(make-child3 population test-pairs add-rate delete-rate)
+                             -3 #(make-child_neg3 population test-pairs add-rate delete-rate)))
+               (inc generation))))))
