@@ -1,6 +1,7 @@
 (ns intseq2.core
   (:require [clojure.math.combinatorics :as com])
-  (:require [clojure.math.numeric-tower :as maths]))
+  (:require [clojure.math.numeric-tower :as maths])
+  (:require [clojure.java.io :as io]))
 
 ;; Code for finding formulas for unknown integer sequences (Numbers 2).
 ;; By: Lee Jiaen, Scott Song, Conrad Kuklinsky, and Yushu Jiang
@@ -294,7 +295,7 @@
                                       (count population)))
               :best-genome  (:genome current-best)})))
 
-(defn gp-main [population-size generations test-pairs elitism add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate tournament-size]
+(defn gp-main [population-size generations test-pairs name elitism add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate tournament-size export-output]
   "Runs genetic programming to solve, or approximately solve, a
   sequence problem in the context of the given population-size,
   number of generations to run, test-pairs, specified mutation and
@@ -306,17 +307,15 @@
     (report generation population)
     (if (or (< (:error (best population)) 0.1)
             (>= generation generations))
-      (spit "result.txt" (str   'test-pairs "\n" ;;needs to change into the test-pairs name
-                                :elitism " " elitism "\n"
-                                :add-rate ":" add-rate " " :delete-rate ":" delete-rate "\n"
-                                :mutate " " mutate? " ":base-mutate-rate ":" base-mutate-rate "\n"
-                                :crossover " " crossover? "\n"
-                                :double_mutate " " double_mutate? " " :double-rate ":" double-rate "\n"
-                                :selection-type " " select-type "\n"
-                                :tournament-size " " tournament-size "\n"
-                                :generation " " generation "\n"
-                                (best population) "\n"
-                                "\n" ) :append true)
+        (if export-output
+          (let [filename (str name "_" population-size "_" generations "_" elitism
+                              "_" (float add-rate) "_" (float delete-rate) "_" mutate? "_" crossover? "_" double_mutate? "_" select-type
+                              "_" (float base-mutate-rate) "_" (float double-rate) "_" tournament-size ".txt")
+                filename2 (str name "_" population-size "_" generations "_" elitism
+                               "_" (float add-rate)  ".txt")]
+            (if (.exists (io/file filename))
+              (spit filename (str :generation " " generation " " (best population) "\n") :append true)
+              (spit filename (str :generation " " generation " " (best population) "\n" )))))
       (if elitism
         (recur (conj (repeatedly (dec population-size)
                                  #(make-child population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate tournament-size))
@@ -324,7 +323,8 @@
                (inc generation))
         (recur (repeatedly population-size
                            #(make-child population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate tournament-size))
-               (inc generation))))))
+               (inc generation)))))
+      )
 
 (def testseq
   (let [seq [1, 2, 3, 4, 5]
@@ -353,11 +353,11 @@
 
 ;;These are set to have population of 200, max 100 gen, crossover, mutation with a 1/10 addition rate
 ;;and 1/11 deletion rate, and tournament selection
-#_(gp-main 200 100 testseq true 1/10 1/11 true true false :tournament 8/10 8/10 10)
-#_(gp-main 200 100 simple-regression-data true 1/10 1/11 true true false :tournament 8/10 8/10 10)
+#_(gp-main 200 100 testseq "testseq" true 1/10 1/11 true true false :tournament 8/10 8/10 10 true)
+#_(gp-main 200 100 simple-regression-data "simple-regression-data" true 1/10 1/11 true true false :tournament 8/10 8/10 10 true)
 #_(gp-main 200 100 polynomial true 1/10 1/11 true true false :tournament 8/10 8/10)
 #_(gp-main 200 100 polynomial2 true 1/10 1/11 true true false :tournament 8/10 8/10 10)
-#_(gp-main 200 100 polynomial3  true 1/10 1/11 true true false :tournament 8/10 8/10 10)
+#_(gp-main 200 100 polynomial3 "polynomial3" true 1/10 1/11 true true false :tournament 8/10 8/10 10 true)
 
 (defn gp_error [population-size generations test-pairs elitism add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate]
   (loop [population (repeatedly population-size
