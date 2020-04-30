@@ -197,7 +197,7 @@
 
 (defn lexicase-select [population test-pairs]
   "Returns an individual selected from population using lexicase selection."
-  (loop [candidates (population)
+  (loop [candidates (distinct population)
          cases (shuffle test-pairs)]
       (let [lexicase-candidates (map #(set-lexicase-error % (first cases)) candidates) ;;need to add the test case error to each candidate
             min-error (apply min (map :lexicase-error lexicase-candidates))
