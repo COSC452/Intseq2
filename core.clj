@@ -306,7 +306,17 @@
     (report generation population)
     (if (or (< (:error (best population)) 0.1)
             (>= generation generations))
-      (best population)
+      (spit "result.txt" (str   'test-pairs "\n" ;;needs to change into the test-pairs name
+                                :elitism " " elitism "\n"
+                                :add-rate ":" add-rate " " :delete-rate ":" delete-rate "\n"
+                                :mutate " " mutate? " ":base-mutate-rate ":" base-mutate-rate "\n"
+                                :crossover " " crossover? "\n"
+                                :double_mutate " " double_mutate? " " :double-rate ":" double-rate "\n"
+                                :selection-type " " select-type "\n"
+                                :tournament-size " " tournament-size "\n"
+                                :generation " " generation "\n"
+                                (best population) "\n"
+                                "\n" ) :append true)
       (if elitism
         (recur (conj (repeatedly (dec population-size)
                                  #(make-child population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate tournament-size))
@@ -343,11 +353,11 @@
 
 ;;These are set to have population of 200, max 100 gen, crossover, mutation with a 1/10 addition rate
 ;;and 1/11 deletion rate, and tournament selection
-#_(gp-main 200 100 testseq true 1/10 1/11 true true false :tournament 8/10 8/10)
-#_(gp-main 200 100 simple-regression-data true 1/10 1/11 true true false :tournament 8/10 8/10)
+#_(gp-main 200 100 testseq true 1/10 1/11 true true false :tournament 8/10 8/10 10)
+#_(gp-main 200 100 simple-regression-data true 1/10 1/11 true true false :tournament 8/10 8/10 10)
 #_(gp-main 200 100 polynomial true 1/10 1/11 true true false :tournament 8/10 8/10)
-#_(gp-main 200 100 polynomial2 true 1/10 1/11 true true false :tournament 8/10 8/10)
-#_(gp-main 200 100 polynomial3  true 1/10 1/11 true true false :tournament 8/10 8/10)
+#_(gp-main 200 100 polynomial2 true 1/10 1/11 true true false :tournament 8/10 8/10 10)
+#_(gp-main 200 100 polynomial3  true 1/10 1/11 true true false :tournament 8/10 8/10 10)
 
 (defn gp_error [population-size generations test-pairs elitism add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate]
   (loop [population (repeatedly population-size
