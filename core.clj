@@ -37,7 +37,7 @@
 
 ;;returns x^y
 (defn pow [x y]
-  (bigint (reduce * (repeat y x))))
+  (bigint (reduce * (repeat (bigint y) (bigint x)))))
 
 ;;solves g^x = y for x
 (defn discretelog [base target]
@@ -90,7 +90,7 @@
                        stack ()]
                   ;;(println "Program:" program "Stack:" stack)
                   (if (empty? program)
-                    (if (empty? stack)
+                    (if (or (empty? stack) (and (> (count stack) 0) (> (first stack) 10000000)) (and (> (count stack) 1) (> (second stack) 10000000)))
                       1000000.0
                       (Math/abs (double (- output (first stack))))) ;; Math/abs only takes in floating points, which causes the "No matching method abs found taking 1 args"
                     (recur (rest program)
