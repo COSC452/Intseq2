@@ -31,7 +31,7 @@
 ;; - Supported instructions pop needed values from the stack and push results on the stack
 ;; - If there aren't sufficient arguments for an instruction, then it does nothing
 
-(def ingredients '(+ - * / x 1 0))
+(def ingredients '(+ - * / x 1))
 
 (defn factorial [n] (bigint (reduce *' (range 1 (inc n)))))
 
