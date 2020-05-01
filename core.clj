@@ -81,7 +81,7 @@
          '((2.0 10.0) (3.0 16.0) (-0.5 -3.0)))
 
 
-(defn error [genome test-pairs]
+(defn error [genome test-pairs upper-limit]
   "Returns the error of genome in the context of test-pairs."
   (reduce + (for [pair test-pairs]
               (let [input (biginteger (first pair))
@@ -90,7 +90,7 @@
                        stack ()]
                   ;;(println "Program:" program "Stack:" stack)
                   (if (empty? program)
-                    (if (or (empty? stack) (and (> (count stack) 0) (> (first stack) 10000000)) (and (> (count stack) 1) (> (second stack) 10000000)))
+                    (if (or (empty? stack) (and (> (count stack) 0) (> (first stack) upper-limit)) (and (> (count stack) 1) (> (second stack) upper-limit)))
                       1000000.0
                       (Math/abs (double (- output (first stack))))) ;; Math/abs only takes in floating points, which causes the "No matching method abs found taking 1 args"
                     (recur (rest program)
@@ -157,9 +157,9 @@
                                           (rest stack)))
                              (cons (first program) stack)))))))))
 
-(defn individual-error [genome input output]
+(defn individual-error [genome input output error-upper-limit]
   "Returns the error of genome in the context of a single pair."
-  (error genome (list (list input output))))
+  (error genome (list (list input output)) error-upper-limit))
 
 ;; Made it so that the variable x has a higher chance of being in the
 ;  formula when the individual is first made because most
@@ -169,11 +169,11 @@
   (vec (repeatedly max-depth #(if (< (rand) 0.67)
                                 (first '(x)) (rand-nth ingredients)))))
 
-(defn new-individual [test-pairs]
+(defn new-individual [test-pairs error-upper-limit]
   "Creates individual with genome, genome error, and lexicase-error keys"
   (let [form (new-formula 5)]
     {:genome         form
-     :error          (error form test-pairs)
+     :error          (error form test-pairs error-upper-limit)
      :lexicase-error 0}))
 
 (defn best [individuals]
@@ -188,16 +188,16 @@
   "Returns an individual selected from population using a tournament of a certain size"
   (best (repeatedly size #(rand-nth population))))
 
-(defn set-lexicase-error [candidate case]
+(defn set-lexicase-error [candidate case error-upper-limit]
   (let [input (first case)
         output (second case)]
-    (assoc candidate :lexicase-error (individual-error (:genome candidate) input output))))
+    (assoc candidate :lexicase-error (individual-error (:genome candidate) input output error-upper-limit))))
 
-(defn lexicase-select [population test-pairs]
+(defn lexicase-select [population test-pairs error-upper-limit]
   "Returns an individual selected from population using lexicase selection."
   (loop [candidates (distinct population)
          cases (shuffle test-pairs)]
-      (let [lexicase-candidates (map #(set-lexicase-error % (first cases)) candidates) ;;need to add the test case error to each candidate
+      (let [lexicase-candidates (map #(set-lexicase-error % (first cases) error-upper-limit) candidates) ;;need to add the test case error to each candidate
             min-error (apply min (map :lexicase-error lexicase-candidates))
             best-candidates (filter #(= min-error (:lexicase-error %)) lexicase-candidates)] ;;just apply min the smallest of the test case errors
         (if (or (= (count best-candidates) 1)
@@ -206,11 +206,11 @@
           (recur best-candidates (rest cases)) ;;filters out candidates with greater error than the min error
           ))))
 
-(defn select [population type test-pairs size]
+(defn select [population type test-pairs size error-upper-limit]
   "Dictates what selection type the program does for the program based on the cases."
   (case type
     :tournament (tournament-select population size)
-    :lexicase (lexicase-select population test-pairs)
+    :lexicase (lexicase-select population test-pairs error-upper-limit)
     )
   )
 
@@ -245,10 +245,10 @@
     (vec (concat (take crossover-point genome1)
                  (drop crossover-point genome2)))))
 
-(defn make-child [population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate tournament-size]
+(defn make-child [population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate tournament-size error-upper-limit]
   "Returns a new, evaluated child, produced by a given mutation and selection combination."
-  (let [genome1 (:genome (select population select-type test-pairs tournament-size))
-        genome2 (:genome (select population select-type test-pairs tournament-size))
+  (let [genome1 (:genome (select population select-type test-pairs tournament-size error-upper-limit))
+        genome2 (:genome (select population select-type test-pairs tournament-size error-upper-limit))
         crossover12 (crossover genome1 genome2)
         new-genome (if crossover? ;;if crossover
                      (if (and mutate? (< (rand) base-mutate-rate))  ;;if crossover, determine if we should mutate
@@ -275,7 +275,7 @@
                          genome2));;if no crossover, no mutate, no double mutate return genome2 as new genome if > 1/2
                        )]
     {:genome         new-genome
-     :error          (error new-genome test-pairs)
+     :error          (error new-genome test-pairs error-upper-limit)
      :lexicase-error 0}))
 
 (defn report [generation population]
@@ -293,14 +293,14 @@
                                       (count population)))
               :best-genome  (:genome current-best)})))
 
-(defn gp-main [population-size generations test-pairs name elitism add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate tournament-size export-output]
+(defn gp-main [population-size generations test-pairs name elitism add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate tournament-size error-upper-limit export-output]
   "Runs genetic programming to solve, or approximately solve, a
   sequence problem in the context of the given population-size,
   number of generations to run, test-pairs, specified mutation and
   selection combination, and addition and deletion rates. This version
   of gp has mutate, double mutate, and crossover as conditionals."
   (loop [population (repeatedly population-size
-                                #(new-individual test-pairs))
+                                #(new-individual test-pairs error-upper-limit))
          generation 0]
     (report generation population)
     (if (or (< (:error (best population)) 0.1)
@@ -308,7 +308,7 @@
         (if export-output
           (let [filename (str name "_" population-size "_" generations "_" elitism
                               "_" (float add-rate) "_" (float delete-rate) "_" mutate? "_" crossover? "_" double_mutate? "_" select-type
-                              "_" (float base-mutate-rate) "_" (float double-rate) "_" tournament-size ".txt")
+                              "_" (float base-mutate-rate) "_" (float double-rate) "_" tournament-size "_" error-upper-limit ".txt")
                 filename2 (str name "_" population-size "_" generations "_" elitism
                                "_" (float add-rate)  ".txt")]
             (if (.exists (io/file filename))
@@ -316,11 +316,11 @@
               (spit filename (str :generation " " generation " " (best population) "\n" )))))
       (if elitism
         (recur (conj (repeatedly (dec population-size)
-                                 #(make-child population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate tournament-size))
+                                 #(make-child population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate tournament-size error-upper-limit))
                      (best population))
                (inc generation))
         (recur (repeatedly population-size
-                           #(make-child population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate tournament-size))
+                           #(make-child population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate tournament-size error-upper-limit))
                (inc generation)))))
       )
 
