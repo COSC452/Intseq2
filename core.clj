@@ -32,7 +32,7 @@
 ;; - Supported instructions pop needed values from the stack and push results on the stack
 ;; - If there aren't sufficient arguments for an instruction, then it does nothing
 
-(def ingredients '(+ - * / x 1))
+(def ingredients '(+ - * / x 0 1))
 
 (defn factorial [n] (bigint (reduce *' (range 1 (inc n)))))
 
@@ -363,7 +363,6 @@
 #_(-main 200 100 polynomial3 "polynomial3" true 1/10 1/11 true true false :lexicase 8/10 8/10 10 10000000 true)
 
 
-----
 #_(-main 200 100 testseq "testseq" true 1/10 1/11 true true false :tournament 8/10 8/10 10 10000000 true)
 #_(-main 200 100 testseq "testseq" true 1/10 1/11 true true false :lexicase 8/10 8/10 10 10000000 true)
 
