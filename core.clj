@@ -293,7 +293,7 @@
                                       (count population)))
               :best-genome  (:genome current-best)})))
 
-(defn gp-main [population-size generations test-pairs name elitism add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate tournament-size export-output]
+(defn -main [population-size generations test-pairs name elitism add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate tournament-size export-output]
   "Runs genetic programming to solve, or approximately solve, a
   sequence problem in the context of the given population-size,
   number of generations to run, test-pairs, specified mutation and
@@ -325,7 +325,7 @@
       )
 
 (def testseq
-  (let [seq [1, 2, 3, 4, 5]
+  (let [seq [1, 1, 2, 5, 11, 26, 68, 177, 497, 1476, 4613, 15216, 52944, 193367, 740226, 2960520]
         ind (range (count seq))]
     (map #(vec [%1 %2]) ind seq)))
 
@@ -351,8 +351,10 @@
 
 ;;These are set to have population of 200, max 100 gen, crossover, mutation with a 1/10 addition rate
 ;;and 1/11 deletion rate, and tournament selection
-#_(gp-main 200 100 testseq "testseq" true 1/10 1/11 true true false :tournament 8/10 8/10 10 true)
-#_(gp-main 200 100 simple-regression-data "simple-regression-data" true 1/10 1/11 true true false :tournament 8/10 8/10 10 true)
-#_(gp-main 200 100 polynomial true 1/10 1/11 true true false :tournament 8/10 8/10 10 true)
-#_(gp-main 200 100 polynomial2 true 1/10 1/11 true true false :tournament 8/10 8/10 10 true)
-#_(gp-main 200 100 polynomial3 "polynomial3" true 1/10 1/11 true true false :tournament 8/10 8/10 10 true)
+#_(-main 200 100 testseq "testseq" true 1/10 1/11 true true false :tournament 8/10 8/10 10 true)
+#_(-main 200 100 testseq "testseq" true 1/10 1/11 true true false :lexicase 8/10 8/10 10 true)
+#_(-main 200 100 polynomial3 "polynomial3" true 1/10 1/11 true true false :tournament 8/10 8/10 10 true)
+#_(-main 200 100 polynomial3 "polynomial3" true 1/10 1/11 true true false :lexicase 8/10 8/10 10 true)
+#_(-main 200 100 polynomial true 1/10 1/11 true true false :tournament 8/10 8/10 10 true)
+#_(-main 200 100 polynomial2 true 1/10 1/11 true true false :tournament 8/10 8/10 10 true)
+#_(-main 200 100 polynomial3 "polynomial3" true 1/10 1/11 true true false :tournament 8/10 8/10 10 true)
