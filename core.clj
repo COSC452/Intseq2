@@ -310,7 +310,9 @@
       (if export-output
         (let [filename (str name "_" population-size "_" generations "_" elitism
                             "_" (float add-rate) "_" (float delete-rate) "_" mutate? "_" crossover? "_" double_mutate? "_" select-type
-                            "_" (float base-mutate-rate) "_" (float double-rate) "_" tournament-size "_" error-upper-limit ".txt")]
+                            "_" (float base-mutate-rate) "_" (float double-rate) "_" tournament-size "_" error-upper-limit ".txt")
+              filename2 (str name "_" population-size "_" generations "_" elitism
+                             "_" (float add-rate)  ".txt")]
           (if (.exists (io/file filename))
             (spit filename (str :generation " " generation " " (best population) "\n") :append true)
             (spit filename (str :generation " " generation " " (best population) "\n" )))))
