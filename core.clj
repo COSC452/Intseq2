@@ -10,7 +10,6 @@
 ;; population-size = the number of individuals in the population
 ;; generations = the number of generations for which it will run evolution
 ;; test-pairs = list of the form ((input output)(input output) ...)
-;; name = string for file name
 ;; elitism = true or false for elitism
 ;; add-rate = add rate for UMAD mutation
 ;; delete-rate = delete rate for UMAD mutation
@@ -20,8 +19,8 @@
 ;; select-type = dictates if program does tournament or lexicase selection
 ;; base-mutate-rate = so that the program does not mutate every time even if mutate is true
 ;; double-rate = so that the program does not mutate every time even if double mutate is true
+;; error-upper-limit = puts a limit so numbers do not get too high
 ;; tournament-size = size of each tournament for tournament selection
-;; export-output = if we want a txt output of the last generation
 
 ;; We will represent an individual as a map with these keys:
 ;; :genome = a vector of instructions and/or constants
@@ -33,24 +32,24 @@
 ;; - Supported instructions pop needed values from the stack and push results on the stack
 ;; - If there aren't sufficient arguments for an instruction, then it does nothing
 
-(def ingredients '(+ - * / x 1 0))
+(def ingredients '(+ - * / x 1))
 
 (defn factorial [n] (bigint (reduce *' (range 1 (inc n)))))
 
 ;;returns x^y
 (defn pow [x y]
-  (bigint (reduce * (repeat y x))))
+  (bigint (reduce * (repeat (bigint y) (bigint x)))))
 
 ;;solves g^x = y for x
 (defn discretelog [base target]
   (let [exp (/ (Math/log target) (Math/log base))
         floor (Math/floor exp)
         ceiling (Math/ceil exp)]
-        (if (= (pow base floor) target)
-          (bigint floor)
-          (if (= (pow base ceiling) target)
-            (bigint ceiling)
-            nil))))
+    (if (= (pow base floor) target)
+      (bigint floor)
+      (if (= (pow base ceiling) target)
+        (bigint ceiling)
+        nil))))
 
 ;;returns quotient only if the quotient is an integer value
 (defn discretedivide [x divisor]
@@ -63,10 +62,11 @@
         ceiling
         nil))))
 
+;;returns the square root only it the square root is an integer value
 (defn discretesqrt [x]
   (let [sqrt (maths/sqrt x)
-    floor (bigint (Math/floor sqrt))
-    ceiling (bigint (Math/ceil sqrt))]
+        floor (bigint (Math/floor sqrt))
+        ceiling (bigint (Math/ceil sqrt))]
     (if (= (* floor floor) x)
       floor
       (if (= (* ceiling ceiling) x)
@@ -83,7 +83,7 @@
          '((2.0 10.0) (3.0 16.0) (-0.5 -3.0)))
 
 
-(defn error [genome test-pairs]
+(defn error [genome test-pairs upper-limit]
   "Returns the error of genome in the context of test-pairs."
   (reduce + (for [pair test-pairs]
               (let [input (biginteger (first pair))
@@ -92,7 +92,7 @@
                        stack ()]
                   ;;(println "Program:" program "Stack:" stack)
                   (if (empty? program)
-                    (if (empty? stack)
+                    (if (or (empty? stack) (and (> (count stack) 0) (> (first stack) upper-limit)) (and (> (count stack) 1) (> (second stack) upper-limit)))
                       1000000.0
                       (Math/abs (double (- output (first stack))))) ;; Math/abs only takes in floating points, which causes the "No matching method abs found taking 1 args"
                     (recur (rest program)
@@ -159,9 +159,9 @@
                                           (rest stack)))
                              (cons (first program) stack)))))))))
 
-(defn individual-error [genome input output]
+(defn individual-error [genome input output error-upper-limit]
   "Returns the error of genome in the context of a single pair."
-  (error genome (list (list input output))))
+  (error genome (list (list input output)) error-upper-limit))
 
 ;; Made it so that the variable x has a higher chance of being in the
 ;  formula when the individual is first made because most
@@ -171,11 +171,11 @@
   (vec (repeatedly max-depth #(if (< (rand) 0.67)
                                 (first '(x)) (rand-nth ingredients)))))
 
-(defn new-individual [test-pairs]
+(defn new-individual [test-pairs error-upper-limit]
   "Creates individual with genome, genome error, and lexicase-error keys"
   (let [form (new-formula 5)]
     {:genome         form
-     :error          (error form test-pairs)
+     :error          (error form test-pairs error-upper-limit)
      :lexicase-error 0}))
 
 (defn best [individuals]
@@ -190,29 +190,29 @@
   "Returns an individual selected from population using a tournament of a certain size"
   (best (repeatedly size #(rand-nth population))))
 
-(defn set-lexicase-error [candidate case]
+(defn set-lexicase-error [candidate case error-upper-limit]
   (let [input (first case)
         output (second case)]
-    (assoc candidate :lexicase-error (individual-error (:genome candidate) input output))))
+    (assoc candidate :lexicase-error (individual-error (:genome candidate) input output error-upper-limit))))
 
-(defn lexicase-select [population test-pairs]
+(defn lexicase-select [population test-pairs error-upper-limit]
   "Returns an individual selected from population using lexicase selection."
   (loop [candidates (distinct population)
          cases (shuffle test-pairs)]
-      (let [lexicase-candidates (map #(set-lexicase-error % (first cases)) candidates) ;;need to add the test case error to each candidate
-            min-error (apply min (map :lexicase-error lexicase-candidates))
-            best-candidates (filter #(= min-error (:lexicase-error %)) lexicase-candidates)] ;;just apply min the smallest of the test case errors
-        (if (or (= (count best-candidates) 1)
-                (= (count cases) 1))
-          (rand-nth best-candidates)                                 ;;in either case, pick a random candidate or it will return the only element in candidate
-          (recur best-candidates (rest cases)) ;;filters out candidates with greater error than the min error
-          ))))
+    (let [lexicase-candidates (map #(set-lexicase-error % (first cases) error-upper-limit) candidates) ;;need to add the test case error to each candidate
+          min-error (apply min (map :lexicase-error lexicase-candidates))
+          best-candidates (filter #(= min-error (:lexicase-error %)) lexicase-candidates)] ;;just apply min the smallest of the test case errors
+      (if (or (= (count best-candidates) 1)
+              (= (count cases) 1))
+        (rand-nth best-candidates)                                 ;;in either case, pick a random candidate or it will return the only element in candidate
+        (recur best-candidates (rest cases)) ;;filters out candidates with greater error than the min error
+        ))))
 
-(defn select [population type test-pairs size]
+(defn select [population type test-pairs size error-upper-limit]
   "Dictates what selection type the program does for the program based on the cases."
   (case type
     :tournament (tournament-select population size)
-    :lexicase (lexicase-select population test-pairs)
+    :lexicase (lexicase-select population test-pairs error-upper-limit)
     )
   )
 
@@ -247,10 +247,10 @@
     (vec (concat (take crossover-point genome1)
                  (drop crossover-point genome2)))))
 
-(defn make-child [population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate tournament-size]
+(defn make-child [population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate tournament-size error-upper-limit]
   "Returns a new, evaluated child, produced by a given mutation and selection combination."
-  (let [genome1 (:genome (select population select-type test-pairs tournament-size))
-        genome2 (:genome (select population select-type test-pairs tournament-size))
+  (let [genome1 (:genome (select population select-type test-pairs tournament-size error-upper-limit))
+        genome2 (:genome (select population select-type test-pairs tournament-size error-upper-limit))
         crossover12 (crossover genome1 genome2)
         new-genome (if crossover? ;;if crossover
                      (if (and mutate? (< (rand) base-mutate-rate))  ;;if crossover, determine if we should mutate
@@ -275,9 +275,9 @@
                        (if (< (rand) 1/2) ;;mutation will not happen
                          genome1 ;;if no crossover, no mutate, no double mutate return genome1 as new genome if < 1/2
                          genome2));;if no crossover, no mutate, no double mutate return genome2 as new genome if > 1/2
-                       )]
+                     )]
     {:genome         new-genome
-     :error          (error new-genome test-pairs)
+     :error          (error new-genome test-pairs error-upper-limit)
      :lexicase-error 0}))
 
 (defn report [generation population]
@@ -295,36 +295,33 @@
                                       (count population)))
               :best-genome  (:genome current-best)})))
 
-(defn gp-main [population-size generations test-pairs name elitism add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate tournament-size export-output]
+(defn gp-main [population-size generations test-pairs name elitism add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate tournament-size error-upper-limit export-output]
   "Runs genetic programming to solve, or approximately solve, a
   sequence problem in the context of the given population-size,
   number of generations to run, test-pairs, specified mutation and
-  selection combination, and addition and deletion rates. This version
-  of gp has mutate, double mutate, and crossover as conditionals."
+  selection combination, addition and deletion rates, and an upper limit error. This version
+  of gp has mutate, double mutate, crossover, and exporting to a txt file as conditionals."
   (loop [population (repeatedly population-size
-                                #(new-individual test-pairs))
+                                #(new-individual test-pairs error-upper-limit))
          generation 0]
     (report generation population)
     (if (or (< (:error (best population)) 0.1)
             (>= generation generations))
-        (if export-output
-          (let [filename (str name "_" population-size "_" generations "_" elitism
-                              "_" (float add-rate) "_" (float delete-rate) "_" mutate? "_" crossover? "_" double_mutate? "_" select-type
-                              "_" (float base-mutate-rate) "_" (float double-rate) "_" tournament-size ".txt")
-                filename2 (str name "_" population-size "_" generations "_" elitism
-                               "_" (float add-rate)  ".txt")]
-            (if (.exists (io/file filename))
-              (spit filename (str :generation " " generation " " (best population) "\n") :append true)
-              (spit filename (str :generation " " generation " " (best population) "\n" )))))
+      (if export-output
+        (let [filename (str name "_" population-size "_" generations "_" elitism
+                            "_" (float add-rate) "_" (float delete-rate) "_" mutate? "_" crossover? "_" double_mutate? "_" select-type
+                            "_" (float base-mutate-rate) "_" (float double-rate) "_" tournament-size "_" error-upper-limit ".txt")]
+          (if (.exists (io/file filename))
+            (spit filename (str :generation " " generation " " (best population) "\n") :append true)
+            (spit filename (str :generation " " generation " " (best population) "\n" )))))
       (if elitism
         (recur (conj (repeatedly (dec population-size)
-                                 #(make-child population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate tournament-size))
+                                 #(make-child population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate tournament-size error-upper-limit))
                      (best population))
                (inc generation))
         (recur (repeatedly population-size
-                           #(make-child population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate tournament-size))
-               (inc generation)))))
-      )
+                           #(make-child population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate tournament-size error-upper-limit))
+               (inc generation))))))
 
 (def testseq
   (let [seq [1, 2, 3, 4, 5]
@@ -352,9 +349,78 @@
                             [x (+ 6 (+ (* x x) (pow x 5)))]))
 
 ;;These are set to have population of 200, max 100 gen, crossover, mutation with a 1/10 addition rate
-;;and 1/11 deletion rate, and tournament selection
+;;and 1/11 deletion rate, tournament selection, 8/10 base mutation rate for mutate and double mutate.
+;;tournament size, and to have a txt output
 #_(gp-main 200 100 testseq "testseq" true 1/10 1/11 true true false :tournament 8/10 8/10 10 true)
 #_(gp-main 200 100 simple-regression-data "simple-regression-data" true 1/10 1/11 true true false :tournament 8/10 8/10 10 true)
 #_(gp-main 200 100 polynomial "polynomial" true 1/10 1/11 true true false :tournament 8/10 8/10 10 true)
 #_(gp-main 200 100 polynomial2 "polynomial2" true 1/10 1/11 true true false :tournament 8/10 8/10 10 true)
 #_(gp-main 200 100 polynomial3 "polynomial3" true 1/10 1/11 true true false :tournament 8/10 8/10 10 true)
+
+(defn gp_error [population-size generations test-pairs elitism add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate tournament-size error-upper-limit]
+  (loop [population (repeatedly population-size
+                                #(new-individual test-pairs error-upper-limit))
+         generation 0]
+    (if (or (< (:error (best population)) 0.1)
+            (>= generation generations))
+      (best population)
+      (if elitism
+        (recur (conj (repeatedly (dec population-size)
+                                 #(make-child population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate tournament-size error-upper-limit))
+                     (best population))
+               (inc generation))
+        (recur (repeatedly population-size
+                           #(make-child population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate tournament-size error-upper-limit))
+               (inc generation))))))
+
+(defn average_error [population-size generations test-pairs name elitism add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate tournament-size error-upper-limit export-output]
+  (loop [sum 0 run 0]
+    (if (>= run 100)
+      (if export-output
+        (let [filename (str name "_" population-size "_" generations "_" elitism
+                            "_" (float add-rate) "_" (float delete-rate) "_" mutate? "_" crossover? "_" double_mutate? "_" select-type
+                            "_" (float base-mutate-rate) "_" (float double-rate) "_" tournament-size "_" error-upper-limit ".txt")]
+          (if (.exists (io/file filename))
+            (spit filename (str "average error is:" " " (/ sum 100) "\n") :append true)
+            (spit filename (str "average error is:" " " (/ sum 100) "\n")))))
+      (recur (+ (:error(gp_error population-size generations test-pairs elitism add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate tournament-size error-upper-limit)) sum) (inc run)))))
+
+#_(average_error 200 100 testseq "testseq" true 1/10 1/11 true true false :tournament 4/5 4/5 10 true)
+#_(average_error 200 100 simple-regression-data "simple-regression-data" true 1/10 1/11 true true false :tournament 4/5 4/5 10 true)
+#_(average_error 200 100 polynomial "polynomial" true 1/10 1/11 true true false :tournament 4/5 4/5 10 true)
+#_(average_error 200 100 polynomial2 "polynomial2" true 1/10 1/11 true true false :tournament 4/5 4/5 10 true)
+#_(average_error 200 100 polynomial3  "polynomial3" true 1/10 1/11 true true false :tournament 4/5 4/5 10 true)
+
+(defn gp_gen [population-size generations test-pairs elitism add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate tournament-size error-upper-limit]
+  (loop [population (repeatedly population-size
+                                #(new-individual test-pairs error-upper-limit))
+         generation 0]
+    (if (or (< (:error (best population)) 0.1)
+            (>= generation generations))
+      generation
+      (if elitism
+        (recur (conj (repeatedly (dec population-size)
+                                 #(make-child population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate tournament-size error-upper-limit))
+                     (best population))
+               (inc generation))
+        (recur (repeatedly population-size
+                           #(make-child population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate tournament-size error-upper-limit))
+               (inc generation))))))
+
+(defn average_gen [population-size generations test-pairs name elitism add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate tournament-size error-upper-limit export-output]
+  (loop [sum 0 run 0]
+    (if (>= run 100)
+      (if export-output
+        (let [filename (str name "_" population-size "_" generations "_" elitism
+                            "_" (float add-rate) "_" (float delete-rate) "_" mutate? "_" crossover? "_" double_mutate? "_" select-type
+                            "_" (float base-mutate-rate) "_" (float double-rate) "_" tournament-size "_" error-upper-limit ".txt")]
+          (if (.exists (io/file filename))
+            (spit filename (str "average generation is:" " " (/ sum 100) "\n") :append true)
+            (spit filename (str "average generation is:" " " (/ sum 100) "\n")))))
+      (recur (+ (gp_gen population-size generations test-pairs elitism add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate tournament-size error-upper-limit) sum) (inc run)))))
+
+#_(average_gen 200 100 testseq "testseq" true 1/10 1/11 true true false :tournament 4/5 4/5 10 true)
+#_(average_gen 200 100 simple-regression-data "simple-regression-data" true 1/10 1/11 true true false :tournament 4/5 4/5 10 true)
+#_(average_gen 200 100 polynomial "polynomial" true 1/10 1/11 true true false :tournament 4/5 4/5 10 true)
+#_(average_gen 200 100 polynomial2 "polynomial2" true 1/10 1/11 true true false :tournament 4/5 4/5 10 true)
+#_(average_gen 200 100 polynomial3  "polynomial3" true 1/10 1/11 true true false :tournament 4/5 4/5 10 true)
