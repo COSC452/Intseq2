@@ -295,13 +295,44 @@
                                       (count population)))
               :best-genome  (:genome current-best)})))
 
+(defn gp-main [population-size generations test-pairs name elitism add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate tournament-size error-upper-limit export-output]
+  "Runs genetic programming to solve, or approximately solve, a
+  sequence problem in the context of the given population-size,
+  number of generations to run, test-pairs, specified mutation and
+  selection combination, addition and deletion rates, and an upper limit error. This version
+  of gp has mutate, double mutate, crossover, and exporting to a txt file as conditionals."
+  (loop [population (repeatedly population-size
+                                #(new-individual test-pairs error-upper-limit))
+         generation 0]
+    (report generation population)
+    (if (or (< (:error (best population)) 0.1)
+            (>= generation generations))
+      (if export-output
+        (let [filename (str name "_" population-size "_" generations "_" elitism
+                            "_" (float add-rate) "_" (float delete-rate) "_" mutate? "_" crossover? "_" double_mutate? "_" select-type
+                            "_" (float base-mutate-rate) "_" (float double-rate) "_" tournament-size "_" error-upper-limit ".txt")
+              filename2 (str name "_" population-size "_" generations "_" elitism
+                             "_" (float add-rate)  ".txt")]
+          (if (.exists (io/file filename))
+            (spit filename (str :generation " " generation " " (best population) "\n") :append true)
+            (spit filename (str :generation " " generation " " (best population) "\n" )))))
+      (if elitism
+        (recur (conj (repeatedly (dec population-size)
+                                 #(make-child population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate tournament-size error-upper-limit))
+                     (best population))
+               (inc generation))
+        (recur (repeatedly population-size
+                           #(make-child population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate tournament-size error-upper-limit))
+               (inc generation))))))
+
 (defn -main [& args]
   ;; population-size generations test-pairs name elitism add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate tournament-size error-upper-limit export-output
   "Runs genetic programming to solve, or approximately solve, a
   sequence problem in the context of the given population-size,
   number of generations to run, test-pairs, specified mutation and
   selection combination, addition and deletion rates, and an upper limit error. This version
-  of gp has mutate, double mutate, crossover, and exporting to a txt file as conditionals."
+  of gp has mutate, double mutate, crossover, and exporting to a txt file as conditionals.
+  THIS IS USED FOR RUNNING IN COMMAND LINE FOR CLUSTER"
   (let [population-size (read-string (nth args 0))
         generations (read-string (nth args 1))
         test-pairs (read-string (nth args 2))
@@ -340,7 +371,7 @@
                  (inc generation))
           (recur (repeatedly population-size
                              #(make-child population test-pairs add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate tournament-size error-upper-limit))
-                 (inc generation))))))
+                 (inc generation)))))))
 
 (def testseq
   (let [seq [1, 1, 2, 5, 11, 26, 68, 177, 497, 1476, 4613, 15216, 52944, 193367, 740226, 2960520]
@@ -370,18 +401,18 @@
 ;;These are set to have population of 200, max 100 gen, crossover, mutation with a 1/10 addition rate
 ;;and 1/11 deletion rate, tournament/lexicase selection, 8/10 base mutation rate for mutate and double mutate.
 ;;tournament size, and to have a txt output
-#_(-main 200 100 polynomial "polynomial" true 1/10 1/11 true true false :tournament 8/10 8/10 10 10000000 true)
-#_(-main 200 100 polynomial "polynomial" true 1/10 1/11 true true false :lexicase 8/10 8/10 10 10000000 true)
+#_(gp-main 200 100 polynomial "polynomial" true 1/10 1/11 true true false :tournament 8/10 8/10 10 10000000 true)
+#_(gp-main 200 100 polynomial "polynomial" true 1/10 1/11 true true false :lexicase 8/10 8/10 10 10000000 true)
 
-#_(-main 200 100 polynomial2 "polynomial2" true 1/10 1/11 true true false :tournament 8/10 8/10 10 10000000 true)
-#_(-main 200 100 polynomial2 "polynomial2" true 1/10 1/11 true true false :lexicase 8/10 8/10 10 10000000 true)
+#_(gp-main 200 100 polynomial2 "polynomial2" true 1/10 1/11 true true false :tournament 8/10 8/10 10 10000000 true)
+#_(gp-main 200 100 polynomial2 "polynomial2" true 1/10 1/11 true true false :lexicase 8/10 8/10 10 10000000 true)
 
-#_(-main 200 100 polynomial3 "polynomial3" true 1/10 1/11 true true false :tournament 8/10 8/10 10 10000000 true)
-#_(-main 200 100 polynomial3 "polynomial3" true 1/10 1/11 true true false :lexicase 8/10 8/10 10 10000000 true)
+#_(gp-main 200 100 polynomial3 "polynomial3" true 1/10 1/11 true true false :tournament 8/10 8/10 10 10000000 true)
+#_(gp-main 200 100 polynomial3 "polynomial3" true 1/10 1/11 true true false :lexicase 8/10 8/10 10 10000000 true)
 
 
-#_(-main 200 100 testseq "testseq" true 1/10 1/11 true true false :tournament 8/10 8/10 10 10000000 true)
-#_(-main 200 100 testseq "testseq" true 1/10 1/11 true true false :lexicase 8/10 8/10 10 10000000 true)
+#_(gp-main 200 100 testseq "testseq" true 1/10 1/11 true true false :tournament 8/10 8/10 10 10000000 true)
+#_(gp-main 200 100 testseq "testseq" true 1/10 1/11 true true false :lexicase 8/10 8/10 10 10000000 true)
 
 (defn gp_error [population-size generations test-pairs elitism add-rate delete-rate mutate? crossover? double_mutate? select-type base-mutate-rate double-rate tournament-size error-upper-limit]
   (loop [population (repeatedly population-size
