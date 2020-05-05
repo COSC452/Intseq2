@@ -32,24 +32,48 @@
 ;; - Supported instructions pop needed values from the stack and push results on the stack
 ;; - If there aren't sufficient arguments for an instruction, then it does nothing
 
-(def ingredients '(+ - * / x 0 1))
+(def ingredients '(+ - * / x 0 1 log ! sqrt))
 
-(defn factorial [n] (bigint (reduce *' (range 1 (inc n)))))
+(defn factorial [n upper-limit]
+  (if (< n 1)
+    nil
+    (loop [result 1
+           iteration 1]
+      ;;(println "iteration: " iteration ", result: " result)
+      (if (> result upper-limit)
+        nil
+        (if (= iteration (+ n 1))
+          (bigint result)
+          (recur (* result iteration)(+ iteration 1)))))))
 
 ;;returns x^y
-(defn pow [x y]
-  (bigint (reduce * (repeat (bigint y) (bigint x)))))
+(defn pow [x y upper-limit]
+  (if (< y 0)
+    nil
+    (loop [result 1
+           iteration 0]
+      (if (= y iteration)
+        result
+        (if (> result upper-limit)
+          nil
+          (recur (* result x)
+                 (+ iteration 1)))))))
+
 
 ;;solves g^x = y for x
 (defn discretelog [base target]
-  (let [exp (/ (Math/log target) (Math/log base))
-        floor (Math/floor exp)
-        ceiling (Math/ceil exp)]
-    (if (= (pow base floor) target)
-      (bigint floor)
-      (if (= (pow base ceiling) target)
-        (bigint ceiling)
-        nil))))
+  (if (= target 1)
+    0
+    (if (or (<= base 1) (<= target 0))
+      nil
+      (let [exp (/ (Math/log target) (Math/log base))
+            floor (Math/floor exp)
+            ceiling (Math/ceil exp)]
+        (if (= (pow base floor target) target )
+          (bigint floor)
+          (if (= (pow base ceiling target) target)
+            (bigint ceiling)
+            nil))))))
 
 ;;returns quotient only if the quotient is an integer value
 (defn discretedivide [x divisor]
@@ -64,14 +88,16 @@
 
 ;;returns the square root only it the square root is an integer value
 (defn discretesqrt [x]
-  (let [sqrt (maths/sqrt x)
-        floor (bigint (Math/floor sqrt))
-        ceiling (bigint (Math/ceil sqrt))]
-    (if (= (* floor floor) x)
-      floor
-      (if (= (* ceiling ceiling) x)
-        ceiling
-        nil))))
+  (if (< x 0)
+    nil
+    (let [sqrt (maths/sqrt x)
+          floor (bigint (Math/floor sqrt))
+          ceiling (bigint (Math/ceil sqrt))]
+      (if (= (* floor floor) x)
+        floor
+        (if (= (* ceiling ceiling) x)
+          ceiling
+          nil)))))
 
 
 ;; In the following test the program multiplies x by 5.0. For the input 2.0 this will produce
@@ -86,8 +112,8 @@
 (defn error [genome test-pairs upper-limit]
   "Returns the error of genome in the context of test-pairs."
   (reduce + (for [pair test-pairs]
-              (let [input (biginteger (first pair))
-                    output (biginteger (second pair))]
+              (let [input (bigint (first pair))
+                    output (bigint (second pair))]
                 (loop [program genome
                        stack ()]
                   ;;(println "Program:" program "Stack:" stack)
@@ -111,8 +137,11 @@
                                        (rest (rest stack))))
                              pow (if (< (count stack) 2)
                                    stack
-                                   (cons (pow (second stack) (first stack))
-                                         (rest (rest stack))))
+                                   (let [result (pow (second stack) (first stack) 100)]
+                                     (if (= result nil)
+                                       stack
+                                       (cons (pow (second stack) (first stack) 100)
+                                             (rest (rest stack))))))
                              / (if (or (< (count stack) 2)
                                        (zero? (first stack)))
                                  stack
@@ -122,9 +151,11 @@
                                      (cons quotient (rest (rest stack))))))
                              ! (if (< (count stack) 1)
                                  stack
-                                 (cons (factorial (first stack))
-                                       (rest stack)))
-                             log (if (< (count stack) 1)
+                                 (let [result (factorial (first stack) upper-limit)]
+                                   (if (= result nil)
+                                     stack
+                                     (cons result (rest stack)))))
+                             log (if (< (count stack) 2)
                                    stack
                                    (let [exponent (discretelog (second stack) (first stack))]
                                      (if (= exponent nil)
@@ -338,12 +369,12 @@
 ;; x^3 - x + 1
 (def polynomial
   (for [x (range -100 100 1)]
-    [x (+ 1 (+ x (- (pow x 3) (* x 2))))]))
+    [x (+ 1 (+ x (- (pow x 3 1000000) (* x 2))))]))
 
 ;; x^3 - x^2 + x+ 1
 (def polynomial2
   (for [x (range -100 100 1)]
-    [x (+ 1 (+ x (- (pow x 3) (pow x 2))))]))
+    [x (+ 1 (+ x (- (pow x 3 1000000) (pow x 2 1000000))))]))
 
 ;; x^5 + x^2 + 6
 (def polynomial3 
